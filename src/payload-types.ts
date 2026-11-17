@@ -69,6 +69,18 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    'student-enquiries': StudentEnquiry;
+    students: Student;
+    'student-assessments': StudentAssessment;
+    'student-tests': StudentTest;
+    'student-test-payments': StudentTestPayment;
+    'student-test-reports': StudentTestReport;
+    'student-test-report-shares': StudentTestReportShare;
+    'teacher-documents': TeacherDocument;
+    'teacher-enquiries': TeacherEnquiry;
+    'teacher-evaluations': TeacherEvaluation;
+    'enquiry-audit-log': EnquiryAuditLog;
+    'teacher-profiles': TeacherProfile;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,17 +90,33 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'student-enquiries': StudentEnquiriesSelect<false> | StudentEnquiriesSelect<true>;
+    students: StudentsSelect<false> | StudentsSelect<true>;
+    'student-assessments': StudentAssessmentsSelect<false> | StudentAssessmentsSelect<true>;
+    'student-tests': StudentTestsSelect<false> | StudentTestsSelect<true>;
+    'student-test-payments': StudentTestPaymentsSelect<false> | StudentTestPaymentsSelect<true>;
+    'student-test-reports': StudentTestReportsSelect<false> | StudentTestReportsSelect<true>;
+    'student-test-report-shares': StudentTestReportSharesSelect<false> | StudentTestReportSharesSelect<true>;
+    'teacher-documents': TeacherDocumentsSelect<false> | TeacherDocumentsSelect<true>;
+    'teacher-enquiries': TeacherEnquiriesSelect<false> | TeacherEnquiriesSelect<true>;
+    'teacher-evaluations': TeacherEvaluationsSelect<false> | TeacherEvaluationsSelect<true>;
+    'enquiry-audit-log': EnquiryAuditLogSelect<false> | EnquiryAuditLogSelect<true>;
+    'teacher-profiles': TeacherProfilesSelect<false> | TeacherProfilesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
-    defaultIDType: string;
+    defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'teacher-evaluation-config': TeacherEvaluationConfig;
+  };
+  globalsSelect: {
+    'teacher-evaluation-config': TeacherEvaluationConfigSelect<false> | TeacherEvaluationConfigSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -122,7 +150,22 @@ export interface UserAuthOperations {
  * via the `definition` "users".
  */
 export interface User {
-  id: string;
+  id: number;
+  /**
+   * Role determines access level within the system.
+   */
+  role: 'super_admin' | 'teacher';
+  /**
+   * Account status. Blocked and suspended accounts cannot authenticate. Blocked is admin-initiated; suspended is temporary/security-related.
+   */
+  status: 'active' | 'blocked' | 'suspended';
+  otpHash?: string | null;
+  otpExpiresAt?: string | null;
+  otpAttempts?: number | null;
+  otpLastSentAt?: string | null;
+  resetAuthToken?: string | null;
+  resetAuthExpiresAt?: string | null;
+  resetAuthUsed?: boolean | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -148,7 +191,7 @@ export interface User {
  * via the `definition` "media".
  */
 export interface Media {
-  id: string;
+  id: number;
   alt: string;
   updatedAt: string;
   createdAt: string;
@@ -164,10 +207,568 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-enquiries".
+ */
+export interface StudentEnquiry {
+  id: number;
+  /**
+   * Student's class or year group (e.g. UKG, Class 10).
+   */
+  studentClass: string;
+  /**
+   * Subjects the student needs tutoring in.
+   */
+  subjects: {
+    subject: string;
+    id?: string | null;
+  }[];
+  /**
+   * Subject name when it is not in the standard list.
+   */
+  customSubject?: string | null;
+  /**
+   * Preferred class timing (e.g. weekday evenings).
+   */
+  preferredTiming: string;
+  /**
+   * Student's locality or area.
+   */
+  locality: string;
+  /**
+   * Locality name when it is not in the standard list.
+   */
+  customLocality?: string | null;
+  /**
+   * Tuition budget range.
+   */
+  budgetRange: string;
+  name: string;
+  /**
+   * Contact phone number. Country code is optional.
+   */
+  phoneNumber: string;
+  /**
+   * Originating channel of the enquiry (defaults to website).
+   */
+  enquirySource?: ('website' | 'phone_call' | 'email' | 'referral' | 'network' | 'other') | null;
+  /**
+   * Optional additional notes from the enquirer.
+   */
+  additionalNotes?: string | null;
+  /**
+   * Must be true to submit the enquiry.
+   */
+  agreedToPolicy: boolean;
+  /**
+   * Indicates whether this enquiry has been opened and read by an administrator.
+   */
+  markAsRead?: boolean | null;
+  /**
+   * Internal enquiry status. Public submissions cannot set this field.
+   */
+  enquiryStatus?: ('new' | 'contacted' | 'in_progress' | 'converted' | 'allocated' | 'closed') | null;
+  /**
+   * Internal admin notes. Public submissions cannot write this field.
+   */
+  adminNotes?: string | null;
+  /**
+   * Internal staff member assigned to handle this enquiry.
+   */
+  assignedTo?: (number | null) | User;
+  /**
+   * Mandatory reason when closing or reopening an enquiry. Forwarded to the audit log and reset.
+   */
+  changeReason?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "students".
+ */
+export interface Student {
+  id: number;
+  name: string;
+  parentName?: string | null;
+  phoneNumber: string;
+  alternatePhoneNumber?: string | null;
+  parentEmail?: string | null;
+  studentClass: string;
+  subjects: {
+    subject: string;
+    id?: string | null;
+  }[];
+  customSubject?: string | null;
+  locality: string;
+  customLocality?: string | null;
+  preferredTiming: string;
+  budgetRange?: string | null;
+  learningNotes?: string | null;
+  /**
+   * One-to-one link to the originating student enquiry when converted.
+   */
+  studentEnquiry?: (number | null) | StudentEnquiry;
+  status: 'active' | 'inactive' | 'paused' | 'completed';
+  convertedAt?: string | null;
+  convertedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-assessments".
+ */
+export interface StudentAssessment {
+  id: number;
+  /**
+   * Operational student record linked to this assessment.
+   */
+  student: number | Student;
+  assessmentType: string;
+  previousPerformance: {
+    summary: string;
+    details?: string | null;
+  };
+  currentCapability: 'excellent' | 'good' | 'average' | 'needs_improvement' | 'weak';
+  strengths?:
+    | {
+        item: string;
+        id?: string | null;
+      }[]
+    | null;
+  weaknesses?:
+    | {
+        item: string;
+        id?: string | null;
+      }[]
+    | null;
+  adminNotes?: string | null;
+  assessedBy?: (number | null) | User;
+  assessedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-tests".
+ */
+export interface StudentTest {
+  id: number;
+  student: number | Student;
+  parentSelected: boolean;
+  testType: string;
+  feeAmount: number;
+  currency: string;
+  location: string;
+  scheduledAt?: string | null;
+  status: 'requested' | 'payment_pending' | 'paid' | 'tester_assigned' | 'scheduled' | 'completed' | 'report_available';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  assignedTester?: (number | null) | User;
+  assignedBy?: (number | null) | User;
+  assignedAt?: string | null;
+  assignmentHistory?:
+    | {
+        tester: number | User;
+        assignedBy?: (number | null) | User;
+        assignedAt: string;
+        scheduledAt?: string | null;
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  completedAt?: string | null;
+  notes?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-test-payments".
+ */
+export interface StudentTestPayment {
+  id: number;
+  studentTest: number | StudentTest;
+  student: number | Student;
+  amount: number;
+  currency: string;
+  paymentMethod: 'cash' | 'upi' | 'card' | 'bank_transfer' | 'online' | 'other';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  transactionReference: string;
+  /**
+   * Populated exclusively for paid payments (`studentTestId`) to prevent concurrent duplicate payments at the PostgreSQL constraint layer.
+   */
+  successfulPaymentKey?: string | null;
+  recordedBy?: (number | null) | User;
+  paidAt?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-test-reports".
+ */
+export interface StudentTestReport {
+  id: number;
+  studentTest: number | StudentTest;
+  student: number | Student;
+  marksObtained: number;
+  totalMarks: number;
+  capability: 'excellent' | 'good' | 'average' | 'needs_improvement' | 'weak';
+  subjectResults: {
+    subject: string;
+    marksObtained: number;
+    totalMarks: number;
+    id?: string | null;
+  }[];
+  remarks?: string | null;
+  submittedBy: number | User;
+  submittedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-test-report-shares".
+ */
+export interface StudentTestReportShare {
+  id: number;
+  studentTest: number | StudentTest;
+  report: number | StudentTestReport;
+  student: number | Student;
+  channel: 'whatsapp' | 'phone_call';
+  recipient: string;
+  status: 'recorded' | 'sent' | 'completed' | 'failed' | 'no_answer';
+  externalDeliveryConfirmed: boolean;
+  providerIntegrated: boolean;
+  notes?: string | null;
+  sharedBy: number | User;
+  sharedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-documents".
+ */
+export interface TeacherDocument {
+  id: number;
+  /**
+   * Human-readable description of the uploaded document.
+   */
+  alt: string;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-enquiries".
+ */
+export interface TeacherEnquiry {
+  id: number;
+  fullName: string;
+  /**
+   * Contact mobile number. Country code is optional.
+   */
+  mobileNumber: string;
+  /**
+   * Optional email address.
+   */
+  email?: string | null;
+  /**
+   * e.g. B.Ed, M.Sc, M.A, PhD.
+   */
+  highestQualification: string;
+  /**
+   * e.g. '3 years' or 'Fresher'.
+   */
+  teachingExperience: string;
+  /**
+   * Subject the teacher primarily teaches.
+   */
+  primarySubject: string;
+  /**
+   * Classes taught, from UKG to Class 10.
+   */
+  classLevel: string;
+  /**
+   * Area where the teacher can take classes.
+   */
+  teachingLocality: string;
+  /**
+   * Preferred days/times for classes.
+   */
+  preferredAvailability: string;
+  /**
+   * Optional additional notes from the applicant.
+   */
+  additionalNotes?: string | null;
+  /**
+   * Must be true to submit the application.
+   */
+  agreedToPolicy: boolean;
+  /**
+   * Private KYC document. Only accessible to super_admin administrators.
+   */
+  aadhaarDocument?: (number | null) | TeacherDocument;
+  /**
+   * Private qualification document. Only accessible to super_admin administrators.
+   */
+  qualificationDocument?: (number | null) | TeacherDocument;
+  /**
+   * Indicates whether this application has been opened and read by an administrator.
+   */
+  markAsRead?: boolean | null;
+  /**
+   * Internal application status. Public submissions cannot set this field.
+   */
+  applicationStatus?:
+    ('new' | 'under_review' | 'shortlisted' | 'evaluation_completed' | 'approved' | 'rejected') | null;
+  /**
+   * Internal admin notes. Public submissions cannot write this field.
+   */
+  adminNotes?: string | null;
+  /**
+   * Internal staff member who reviewed this application.
+   */
+  reviewedBy?: (number | null) | User;
+  /**
+   * Timestamp when the application was last reviewed.
+   */
+  reviewedAt?: string | null;
+  /**
+   * Separate availability status for approved teachers (free vs allocated). Defaults to free upon approval.
+   */
+  teacherAvailability?: ('free' | 'allocated') | null;
+  /**
+   * Category of rejection. Character/conduct rejections can never be reopened.
+   */
+  rejectionCategory?:
+    | (
+        | 'qualifications_mismatch'
+        | 'experience_insufficient'
+        | 'document_verification_failed'
+        | 'interview_demo_failed'
+        | 'character_conduct'
+        | 'other'
+      )
+    | null;
+  /**
+   * Mandatory reason when rejecting or reopening a teacher application. Forwarded to the audit log and reset.
+   */
+  changeReason?: string | null;
+  /**
+   * Linked approved teacher profile in the main teachers network.
+   */
+  teacherProfile?: (number | null) | TeacherProfile;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-profiles".
+ */
+export interface TeacherProfile {
+  id: number;
+  name: string;
+  email?: string | null;
+  mobile: string;
+  avatar?: string | null;
+  primarySubject: string;
+  qualification: string;
+  experienceYears?: number | null;
+  classLevels?: string | null;
+  locality?: string | null;
+  availability?: string | null;
+  applicantNotes?: string | null;
+  /**
+   * Linked originating teacher application record.
+   */
+  teacherEnquiry: number | TeacherEnquiry;
+  approvalStatus: 'approved' | 'pending' | 'rejected';
+  registrationFee?: {
+    status?: ('paid' | 'pending' | 'failed' | 'waived') | null;
+    amount?: number | null;
+    currency?: string | null;
+    year?: string | null;
+    paymentDate?: string | null;
+    transactionRef?: string | null;
+  };
+  kyc?: {
+    status?: ('verified' | 'under_review' | 'pending' | 'rejected') | null;
+    aadhaarStatus?: string | null;
+    qualificationStatus?: string | null;
+    aadhaarDocument?: (number | null) | TeacherDocument;
+    qualificationDocument?: (number | null) | TeacherDocument;
+    reviewNotes?: string | null;
+    reviewedAt?: string | null;
+  };
+  studentAllocation?: {
+    status?: ('allocated' | 'partially_allocated' | 'unallocated') | null;
+    allocatedCount?: number | null;
+    studentsSummary?: string | null;
+    allocationDate?: string | null;
+  };
+  account?: {
+    status?: ('active' | 'inactive' | 'suspended') | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-evaluations".
+ */
+export interface TeacherEvaluation {
+  id: number;
+  /**
+   * Teacher application being evaluated.
+   */
+  teacherEnquiry: number | TeacherEnquiry;
+  /**
+   * Sequential evaluation number per teacher enquiry for history tracking.
+   */
+  attemptNumber: number;
+  evaluationStatus: 'in_progress' | 'completed';
+  writtenTest?: {
+    isRecorded?: boolean | null;
+    marksObtained?: number | null;
+    totalMarks?: number | null;
+    percentage?: number | null;
+    remarks?: string | null;
+    recordedBy?: (number | null) | User;
+    recordedAt?: string | null;
+  };
+  interview?: {
+    isRecorded?: boolean | null;
+    marksObtained?: number | null;
+    totalMarks?: number | null;
+    percentage?: number | null;
+    remarks?: string | null;
+    recordedBy?: (number | null) | User;
+    recordedAt?: string | null;
+  };
+  appliedWeights?: {
+    writtenTestWeight?: number | null;
+    interviewWeight?: number | null;
+  };
+  /**
+   * Weighted evaluation score (0–100), calculated when completed.
+   */
+  qualityScore?: number | null;
+  overallRemarks?: string | null;
+  evaluator?: (number | null) | User;
+  evaluatedAt?: string | null;
+  completedAt?: string | null;
+  lastUpdatedBy?: (number | null) | User;
+  lastUpdatedAt?: string | null;
+  /**
+   * Append-only snapshot history preserving prior marks, weights, quality score, and actors.
+   */
+  revisionHistory?:
+    | {
+        revisionNumber: number;
+        previousStatus: 'in_progress' | 'completed';
+        newStatus: 'in_progress' | 'completed';
+        previousWrittenTest?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        previousInterview?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        previousAppliedWeights?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        previousQualityScore?: number | null;
+        newQualityScore?: number | null;
+        changeReason?: string | null;
+        changedBy?: (number | null) | User;
+        changedAt: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "enquiry-audit-log".
+ */
+export interface EnquiryAuditLog {
+  id: number;
+  /**
+   * Type of enquiry the status change applies to.
+   */
+  enquiryType: 'student' | 'teacher';
+  /**
+   * Related student enquiry (set when enquiryType is student).
+   */
+  studentEnquiry?: (number | null) | StudentEnquiry;
+  /**
+   * Related teacher enquiry (set when enquiryType is teacher).
+   */
+  teacherEnquiry?: (number | null) | TeacherEnquiry;
+  /**
+   * Which status or evaluation field was changed.
+   */
+  fieldChanged: 'enquiryStatus' | 'applicationStatus' | 'evaluation';
+  /**
+   * Status before the change. Null for initial assignment.
+   */
+  previousStatus?: string | null;
+  /**
+   * Status after the change.
+   */
+  newStatus: string;
+  /**
+   * Authenticated super_admin who made the change.
+   */
+  changedBy?: (number | null) | User;
+  /**
+   * Server-generated timestamp of the change.
+   */
+  changedAt?: string | null;
+  /**
+   * Reason for the status change. Established as a field in Phase 1; made mandatory in Phase 2.
+   */
+  changeReason?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: string;
+  id: number;
   key: string;
   data:
     | {
@@ -184,20 +785,68 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: string;
+  id: number;
   document?:
     | ({
         relationTo: 'users';
-        value: string | User;
+        value: number | User;
       } | null)
     | ({
         relationTo: 'media';
-        value: string | Media;
+        value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'student-enquiries';
+        value: number | StudentEnquiry;
+      } | null)
+    | ({
+        relationTo: 'students';
+        value: number | Student;
+      } | null)
+    | ({
+        relationTo: 'student-assessments';
+        value: number | StudentAssessment;
+      } | null)
+    | ({
+        relationTo: 'student-tests';
+        value: number | StudentTest;
+      } | null)
+    | ({
+        relationTo: 'student-test-payments';
+        value: number | StudentTestPayment;
+      } | null)
+    | ({
+        relationTo: 'student-test-reports';
+        value: number | StudentTestReport;
+      } | null)
+    | ({
+        relationTo: 'student-test-report-shares';
+        value: number | StudentTestReportShare;
+      } | null)
+    | ({
+        relationTo: 'teacher-documents';
+        value: number | TeacherDocument;
+      } | null)
+    | ({
+        relationTo: 'teacher-enquiries';
+        value: number | TeacherEnquiry;
+      } | null)
+    | ({
+        relationTo: 'teacher-evaluations';
+        value: number | TeacherEvaluation;
+      } | null)
+    | ({
+        relationTo: 'enquiry-audit-log';
+        value: number | EnquiryAuditLog;
+      } | null)
+    | ({
+        relationTo: 'teacher-profiles';
+        value: number | TeacherProfile;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -207,10 +856,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: string;
+  id: number;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   key?: string | null;
   value?:
@@ -230,7 +879,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: string;
+  id: number;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
@@ -241,6 +890,15 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
+  status?: T;
+  otpHash?: T;
+  otpExpiresAt?: T;
+  otpAttempts?: T;
+  otpLastSentAt?: T;
+  resetAuthToken?: T;
+  resetAuthExpiresAt?: T;
+  resetAuthUsed?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -276,6 +934,375 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-enquiries_select".
+ */
+export interface StudentEnquiriesSelect<T extends boolean = true> {
+  studentClass?: T;
+  subjects?:
+    | T
+    | {
+        subject?: T;
+        id?: T;
+      };
+  customSubject?: T;
+  preferredTiming?: T;
+  locality?: T;
+  customLocality?: T;
+  budgetRange?: T;
+  name?: T;
+  phoneNumber?: T;
+  enquirySource?: T;
+  additionalNotes?: T;
+  agreedToPolicy?: T;
+  markAsRead?: T;
+  enquiryStatus?: T;
+  adminNotes?: T;
+  assignedTo?: T;
+  changeReason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "students_select".
+ */
+export interface StudentsSelect<T extends boolean = true> {
+  name?: T;
+  parentName?: T;
+  phoneNumber?: T;
+  alternatePhoneNumber?: T;
+  parentEmail?: T;
+  studentClass?: T;
+  subjects?:
+    | T
+    | {
+        subject?: T;
+        id?: T;
+      };
+  customSubject?: T;
+  locality?: T;
+  customLocality?: T;
+  preferredTiming?: T;
+  budgetRange?: T;
+  learningNotes?: T;
+  studentEnquiry?: T;
+  status?: T;
+  convertedAt?: T;
+  convertedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-assessments_select".
+ */
+export interface StudentAssessmentsSelect<T extends boolean = true> {
+  student?: T;
+  assessmentType?: T;
+  previousPerformance?:
+    | T
+    | {
+        summary?: T;
+        details?: T;
+      };
+  currentCapability?: T;
+  strengths?:
+    | T
+    | {
+        item?: T;
+        id?: T;
+      };
+  weaknesses?:
+    | T
+    | {
+        item?: T;
+        id?: T;
+      };
+  adminNotes?: T;
+  assessedBy?: T;
+  assessedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-tests_select".
+ */
+export interface StudentTestsSelect<T extends boolean = true> {
+  student?: T;
+  parentSelected?: T;
+  testType?: T;
+  feeAmount?: T;
+  currency?: T;
+  location?: T;
+  scheduledAt?: T;
+  status?: T;
+  paymentStatus?: T;
+  assignedTester?: T;
+  assignedBy?: T;
+  assignedAt?: T;
+  assignmentHistory?:
+    | T
+    | {
+        tester?: T;
+        assignedBy?: T;
+        assignedAt?: T;
+        scheduledAt?: T;
+        notes?: T;
+        id?: T;
+      };
+  completedAt?: T;
+  notes?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-test-payments_select".
+ */
+export interface StudentTestPaymentsSelect<T extends boolean = true> {
+  studentTest?: T;
+  student?: T;
+  amount?: T;
+  currency?: T;
+  paymentMethod?: T;
+  paymentStatus?: T;
+  transactionReference?: T;
+  successfulPaymentKey?: T;
+  recordedBy?: T;
+  paidAt?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-test-reports_select".
+ */
+export interface StudentTestReportsSelect<T extends boolean = true> {
+  studentTest?: T;
+  student?: T;
+  marksObtained?: T;
+  totalMarks?: T;
+  capability?: T;
+  subjectResults?:
+    | T
+    | {
+        subject?: T;
+        marksObtained?: T;
+        totalMarks?: T;
+        id?: T;
+      };
+  remarks?: T;
+  submittedBy?: T;
+  submittedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "student-test-report-shares_select".
+ */
+export interface StudentTestReportSharesSelect<T extends boolean = true> {
+  studentTest?: T;
+  report?: T;
+  student?: T;
+  channel?: T;
+  recipient?: T;
+  status?: T;
+  externalDeliveryConfirmed?: T;
+  providerIntegrated?: T;
+  notes?: T;
+  sharedBy?: T;
+  sharedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-documents_select".
+ */
+export interface TeacherDocumentsSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-enquiries_select".
+ */
+export interface TeacherEnquiriesSelect<T extends boolean = true> {
+  fullName?: T;
+  mobileNumber?: T;
+  email?: T;
+  highestQualification?: T;
+  teachingExperience?: T;
+  primarySubject?: T;
+  classLevel?: T;
+  teachingLocality?: T;
+  preferredAvailability?: T;
+  additionalNotes?: T;
+  agreedToPolicy?: T;
+  aadhaarDocument?: T;
+  qualificationDocument?: T;
+  markAsRead?: T;
+  applicationStatus?: T;
+  adminNotes?: T;
+  reviewedBy?: T;
+  reviewedAt?: T;
+  teacherAvailability?: T;
+  rejectionCategory?: T;
+  changeReason?: T;
+  teacherProfile?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-evaluations_select".
+ */
+export interface TeacherEvaluationsSelect<T extends boolean = true> {
+  teacherEnquiry?: T;
+  attemptNumber?: T;
+  evaluationStatus?: T;
+  writtenTest?:
+    | T
+    | {
+        isRecorded?: T;
+        marksObtained?: T;
+        totalMarks?: T;
+        percentage?: T;
+        remarks?: T;
+        recordedBy?: T;
+        recordedAt?: T;
+      };
+  interview?:
+    | T
+    | {
+        isRecorded?: T;
+        marksObtained?: T;
+        totalMarks?: T;
+        percentage?: T;
+        remarks?: T;
+        recordedBy?: T;
+        recordedAt?: T;
+      };
+  appliedWeights?:
+    | T
+    | {
+        writtenTestWeight?: T;
+        interviewWeight?: T;
+      };
+  qualityScore?: T;
+  overallRemarks?: T;
+  evaluator?: T;
+  evaluatedAt?: T;
+  completedAt?: T;
+  lastUpdatedBy?: T;
+  lastUpdatedAt?: T;
+  revisionHistory?:
+    | T
+    | {
+        revisionNumber?: T;
+        previousStatus?: T;
+        newStatus?: T;
+        previousWrittenTest?: T;
+        previousInterview?: T;
+        previousAppliedWeights?: T;
+        previousQualityScore?: T;
+        newQualityScore?: T;
+        changeReason?: T;
+        changedBy?: T;
+        changedAt?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "enquiry-audit-log_select".
+ */
+export interface EnquiryAuditLogSelect<T extends boolean = true> {
+  enquiryType?: T;
+  studentEnquiry?: T;
+  teacherEnquiry?: T;
+  fieldChanged?: T;
+  previousStatus?: T;
+  newStatus?: T;
+  changedBy?: T;
+  changedAt?: T;
+  changeReason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-profiles_select".
+ */
+export interface TeacherProfilesSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  mobile?: T;
+  avatar?: T;
+  primarySubject?: T;
+  qualification?: T;
+  experienceYears?: T;
+  classLevels?: T;
+  locality?: T;
+  availability?: T;
+  applicantNotes?: T;
+  teacherEnquiry?: T;
+  approvalStatus?: T;
+  registrationFee?:
+    | T
+    | {
+        status?: T;
+        amount?: T;
+        currency?: T;
+        year?: T;
+        paymentDate?: T;
+        transactionRef?: T;
+      };
+  kyc?:
+    | T
+    | {
+        status?: T;
+        aadhaarStatus?: T;
+        qualificationStatus?: T;
+        aadhaarDocument?: T;
+        qualificationDocument?: T;
+        reviewNotes?: T;
+        reviewedAt?: T;
+      };
+  studentAllocation?:
+    | T
+    | {
+        status?: T;
+        allocatedCount?: T;
+        studentsSummary?: T;
+        allocationDate?: T;
+      };
+  account?:
+    | T
+    | {
+        status?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -316,6 +1343,34 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-evaluation-config".
+ */
+export interface TeacherEvaluationConfig {
+  id: number;
+  /**
+   * Weight multiplier applied to Written Percentage (0.50 = 50%). Must sum to 1.0 with interviewWeight.
+   */
+  writtenTestWeight: number;
+  /**
+   * Weight multiplier applied to Interview Percentage (0.50 = 50%). Must sum to 1.0 with writtenTestWeight.
+   */
+  interviewWeight: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-evaluation-config_select".
+ */
+export interface TeacherEvaluationConfigSelect<T extends boolean = true> {
+  writtenTestWeight?: T;
+  interviewWeight?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
