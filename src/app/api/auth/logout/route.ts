@@ -2,6 +2,17 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
+export async function OPTIONS(): Promise<Response> {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    },
+  })
+}
+
 /**
  * POST /api/auth/logout
  * Invalidates the current session. Payload's auth.logout clears the token cookie

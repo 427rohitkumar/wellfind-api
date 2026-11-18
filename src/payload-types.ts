@@ -79,6 +79,8 @@ export interface Config {
     'teacher-documents': TeacherDocument;
     'teacher-enquiries': TeacherEnquiry;
     'teacher-evaluations': TeacherEvaluation;
+    'teacher-matches': TeacherMatch;
+    'teacher-allocations': TeacherAllocation;
     'enquiry-audit-log': EnquiryAuditLog;
     'teacher-profiles': TeacherProfile;
     'payload-kv': PayloadKv;
@@ -100,6 +102,8 @@ export interface Config {
     'teacher-documents': TeacherDocumentsSelect<false> | TeacherDocumentsSelect<true>;
     'teacher-enquiries': TeacherEnquiriesSelect<false> | TeacherEnquiriesSelect<true>;
     'teacher-evaluations': TeacherEvaluationsSelect<false> | TeacherEvaluationsSelect<true>;
+    'teacher-matches': TeacherMatchesSelect<false> | TeacherMatchesSelect<true>;
+    'teacher-allocations': TeacherAllocationsSelect<false> | TeacherAllocationsSelect<true>;
     'enquiry-audit-log': EnquiryAuditLogSelect<false> | EnquiryAuditLogSelect<true>;
     'teacher-profiles': TeacherProfilesSelect<false> | TeacherProfilesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -595,6 +599,15 @@ export interface TeacherProfile {
    * Linked originating teacher application record.
    */
   teacherEnquiry: number | TeacherEnquiry;
+  /**
+   * Teacher login account linked at approval (role assigned server-side).
+   */
+  user?: (number | null) | User;
+  evaluation?: (number | null) | TeacherEvaluation;
+  evaluationScore?: number | null;
+  availabilityStatus?: ('free' | 'allocated') | null;
+  approvedBy?: (number | null) | User;
+  approvedAt?: string | null;
   approvalStatus: 'approved' | 'pending' | 'rejected';
   registrationFee?: {
     status?: ('paid' | 'pending' | 'failed' | 'waived') | null;
@@ -720,6 +733,60 @@ export interface TeacherEvaluation {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-matches".
+ */
+export interface TeacherMatch {
+  id: number;
+  student: number | Student;
+  teacher: number | TeacherProfile;
+  matchStatus: 'eligible' | 'shortlisted' | 'rejected';
+  criteriaSnapshot:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  qualityScore?: number | null;
+  adminNotes?: string | null;
+  createdBy: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-allocations".
+ */
+export interface TeacherAllocation {
+  id: number;
+  student: number | Student;
+  teacher: number | TeacherProfile;
+  subject: string;
+  status: 'assigned' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled';
+  allocationNotes?: string | null;
+  allocatedBy: number | User;
+  allocatedAt: string;
+  /**
+   * Set only while the allocation is live.
+   */
+  activeKey?: string | null;
+  statusHistory?:
+    | {
+        fromStatus?: string | null;
+        toStatus: string;
+        reason?: string | null;
+        changedBy?: (number | null) | User;
+        changedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "enquiry-audit-log".
  */
 export interface EnquiryAuditLog {
@@ -834,6 +901,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'teacher-evaluations';
         value: number | TeacherEvaluation;
+      } | null)
+    | ({
+        relationTo: 'teacher-matches';
+        value: number | TeacherMatch;
+      } | null)
+    | ({
+        relationTo: 'teacher-allocations';
+        value: number | TeacherAllocation;
       } | null)
     | ({
         relationTo: 'enquiry-audit-log';
@@ -1234,6 +1309,47 @@ export interface TeacherEvaluationsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-matches_select".
+ */
+export interface TeacherMatchesSelect<T extends boolean = true> {
+  student?: T;
+  teacher?: T;
+  matchStatus?: T;
+  criteriaSnapshot?: T;
+  qualityScore?: T;
+  adminNotes?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-allocations_select".
+ */
+export interface TeacherAllocationsSelect<T extends boolean = true> {
+  student?: T;
+  teacher?: T;
+  subject?: T;
+  status?: T;
+  allocationNotes?: T;
+  allocatedBy?: T;
+  allocatedAt?: T;
+  activeKey?: T;
+  statusHistory?:
+    | T
+    | {
+        fromStatus?: T;
+        toStatus?: T;
+        reason?: T;
+        changedBy?: T;
+        changedAt?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "enquiry-audit-log_select".
  */
 export interface EnquiryAuditLogSelect<T extends boolean = true> {
@@ -1266,6 +1382,12 @@ export interface TeacherProfilesSelect<T extends boolean = true> {
   availability?: T;
   applicantNotes?: T;
   teacherEnquiry?: T;
+  user?: T;
+  evaluation?: T;
+  evaluationScore?: T;
+  availabilityStatus?: T;
+  approvedBy?: T;
+  approvedAt?: T;
   approvalStatus?: T;
   registrationFee?:
     | T

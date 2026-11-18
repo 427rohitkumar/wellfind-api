@@ -36,6 +36,15 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
+  cors: '*',
+  csrf: [
+    'http://localhost:8081',
+    'http://localhost:8082',
+    'http://localhost:3000',
+    'http://localhost:3004',
+    'http://127.0.0.1:8081',
+    'http://127.0.0.1:8082',
+  ],
   admin: {
     user: Users.slug,
     importMap: {

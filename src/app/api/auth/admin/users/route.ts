@@ -15,6 +15,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const result: any = await (payload as any).auth({
       req: request as unknown as { headers: Headers },
+      headers: request.headers,
     })
     const { user } = result
 
@@ -77,6 +78,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const result: any = await (payload as any).auth({
       req: request as unknown as { headers: Headers },
+      headers: request.headers,
     })
     const { user } = result
 
