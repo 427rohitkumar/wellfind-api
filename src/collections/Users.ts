@@ -34,11 +34,14 @@ export const Users: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
+      // super_admin can read all user accounts
+      if (user && user.role === 'super_admin') {
+        return true
+      }
       // Authenticated users can read their own profile
       if (user) {
         return { id: { equals: user.id } }
       }
-      // super_admin can read all (checked below via role)
       return false
     },
     create: ({ req: { user } }) => {

@@ -38,7 +38,11 @@ export function getMailConfig(): MailConfig {
   const secure = env.SMTP_SECURE ? env.SMTP_SECURE === 'true' : port === 465
   const isPlaceholder = (v: string | null) => !v || /^YOUR_/i.test(v)
 
-  const portalBase = (env.APP_PORTAL_URL || 'http://localhost:5173').replace(/\/+$/, '')
+  const defaultPortal =
+    process.env.NODE_ENV === 'production' || process.env.VERCEL
+      ? 'https://crm.wellfindacademic.com'
+      : 'http://localhost:5173'
+  const portalBase = (env.APP_PORTAL_URL || defaultPortal).replace(/\/+$/, '')
   return {
     configured: !isPlaceholder(host) && Boolean(port) && !isPlaceholder(user) && !isPlaceholder(password),
     dryRun: env.MAIL_DRY_RUN === 'true',
