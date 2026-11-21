@@ -19,17 +19,38 @@ export interface PushMessage {
 
 let configured: boolean | null = null
 
+function cleanKey(k: string | undefined): string {
+  if (!k) return ''
+  return k.trim().replace(/^["']|["']$/g, '')
+}
+
 export function pushConfig() {
-  return { publicKey: process.env.VAPID_PUBLIC_KEY?.trim() || '', privateKey: process.env.VAPID_PRIVATE_KEY?.trim() || '' }
+  let publicKey = cleanKey(process.env.VAPID_PUBLIC_KEY)
+  let privateKey = cleanKey(process.env.VAPID_PRIVATE_KEY)
+
+  // Auto-heal if public and private keys were accidentally swapped in environment variables
+  // (P-256 public key is 65 bytes / ~87 base64 chars; private key is 32 bytes / ~43 base64 chars)
+  if (publicKey.length > 0 && publicKey.length < 50 && privateKey.length > 50) {
+    const temp = publicKey
+    publicKey = privateKey
+    privateKey = temp
+  }
+
+  return { publicKey, privateKey }
 }
 
 export function isPushConfigured(): boolean {
   if (configured !== null) return configured
   const { publicKey, privateKey } = pushConfig()
   if (!publicKey || !privateKey) return (configured = false)
-  const subject = process.env.VAPID_SUBJECT?.trim() || (process.env.SMTP_FROM_EMAIL ? `mailto:${process.env.SMTP_FROM_EMAIL}` : 'mailto:admin@wellfindacademic.com')
-  webpush.setVapidDetails(subject, publicKey, privateKey)
-  return (configured = true)
+  const subject = process.env.VAPID_SUBJECT?.trim() || (process.env.SMTP_FROM_EMAIL ? `mailto:${process.env.SMTP_FROM_EMAIL}` : 'mailto:info@wellfindacademic.com')
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey)
+    return (configured = true)
+  } catch (err) {
+    console.error('Failed to configure VAPID webpush:', err)
+    return (configured = false)
+  }
 }
 
 async function sendToSubscriptions(payload: Payload, subs: Record<string, any>[], message: PushMessage) {
