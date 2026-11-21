@@ -66,6 +66,7 @@ async function main(): Promise<void> {
   console.log(
     'IMPORTANT: Remove INITIAL_ADMIN_PASSWORD from your deployment environment after initial setup.'
   )
+  process.exit(0)
 }
 
 main().catch((err: unknown) => {

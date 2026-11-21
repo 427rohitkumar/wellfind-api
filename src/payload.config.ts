@@ -45,9 +45,7 @@ dotenvConfig()
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-// Build CSRF origin whitelist from env or fall back to localhost origins for dev.
-// ALLOWED_ORIGINS is a comma-separated list of origins, e.g.:
-//   ALLOWED_ORIGINS=https://wellfindacademic.com,https://crm.wellfindacademic.com
+// Build CSRF and CORS origin whitelist from env with dev origins included
 function buildCsrfOrigins(): string[] {
   const devOrigins = [
     'http://localhost:8081',
@@ -68,14 +66,23 @@ function buildCsrfOrigins(): string[] {
   return fromEnv.length > 0 ? [...fromEnv, ...devOrigins] : devOrigins
 }
 
+function buildCorsOrigins(): string[] | '*' {
+  const envVal = process.env.ALLOWED_ORIGINS?.trim()
+  if (!envVal || envVal === '*') return '*'
+  const fromEnv = envVal.split(',').map((o) => o.trim()).filter(Boolean)
+  const devOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3004',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3004',
+  ]
+  return [...fromEnv, ...devOrigins]
+}
+
 export default buildConfig({
-  cors: (process.env.ALLOWED_ORIGINS || '*')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean)
-    .join(',') === '*'
-    ? '*'
-    : (process.env.ALLOWED_ORIGINS || '*').split(',').map((o) => o.trim()).filter(Boolean),
+  cors: buildCorsOrigins(),
   csrf: buildCsrfOrigins(),
   admin: {
     user: Users.slug,
