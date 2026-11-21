@@ -18,6 +18,7 @@ export async function POST(
 
     const result: any = await (payload as any).auth({
       req: request as unknown as { headers: Headers },
+      headers: request.headers,
     })
     const { user } = result
 

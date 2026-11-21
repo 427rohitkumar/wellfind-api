@@ -61,6 +61,13 @@ async function makeEnquiry(opts: { email?: string | null; status?: string } = {}
     })
     if (s === target) break
   }
+  // Approval requires the registration fee to be settled.
+  await payload.update({
+    collection: 'teacher-enquiries',
+    id: created.id,
+    data: { registrationFee: { status: 'paid' } },
+    overrideAccess: true,
+  })
   return created
 }
 

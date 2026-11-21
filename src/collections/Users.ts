@@ -7,6 +7,22 @@ export const Users: CollectionConfig = {
   },
   auth: true,
   hooks: {
+    afterChange: [
+      // Welcome mail for new accounts and a notice when an account is blocked, suspended or restored.
+      async ({ operation, previousDoc, doc, req }) => {
+        if ((req as any)?.context?.skipAccountMail) return
+        try {
+          const { notifyAccountCreated, notifyAccountStatusChange } = await import('@/services/mailNotifications')
+          if (operation === 'create') {
+            await notifyAccountCreated(req.payload, doc)
+          } else if (operation === 'update') {
+            await notifyAccountStatusChange(req.payload, doc, previousDoc?.status)
+          }
+        } catch {
+          /* mail problems must never fail the request */
+        }
+      },
+    ],
     afterLogin: [
       async ({ user }) => {
         if (user && (user.status === 'blocked' || user.status === 'suspended')) {
@@ -49,12 +65,24 @@ export const Users: CollectionConfig = {
     {
       name: 'role',
       type: 'select',
-      options: ['super_admin', 'teacher'],
+      options: ['super_admin', 'operations_manager', 'student_counselor', 'teacher_coordinator', 'finance_manager', 'marketing_analyst', 'support_executive', 'teacher'],
       defaultValue: 'teacher',
       required: true,
       admin: {
         description: 'Role determines access level within the system.',
       },
+    },
+    { name: 'fullName', type: 'text', maxLength: 100 },
+    { name: 'phone', type: 'text', maxLength: 20 },
+    {
+      name: 'gender',
+      type: 'select',
+      options: ['male', 'female', 'other'],
+    },
+    {
+      name: 'avatar',
+      type: 'text',
+      admin: { description: 'Profile photo URL (set through POST /api/uploads).' },
     },
     {
       name: 'status',

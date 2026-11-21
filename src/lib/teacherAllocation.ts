@@ -39,3 +39,23 @@ export function isActiveAllocationStatus(s: unknown): boolean {
 export function buildActiveKey(studentId: number, teacherId: number, subject: string): string {
   return `${studentId}:${teacherId}:${subject.toLowerCase().replace(/\s+/g, ' ').trim()}`
 }
+
+export interface AllocationTerms {
+  monthlyFee: number
+  commissionPercent: number
+  commissionAmount: number
+  teacherPayout: number
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** Derives Wellfind's commission and the teacher's payout from fee and commission %. */
+export function computeAllocationTerms(monthlyFee: number, commissionPercent: number): AllocationTerms {
+  const commissionAmount = round2((monthlyFee * commissionPercent) / 100)
+  return {
+    monthlyFee: round2(monthlyFee),
+    commissionPercent,
+    commissionAmount,
+    teacherPayout: round2(monthlyFee - commissionAmount),
+  }
+}

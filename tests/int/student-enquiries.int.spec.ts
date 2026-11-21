@@ -165,6 +165,7 @@ describe('Student Enquiry — access control rules (no database required)', () =
       'new',
       'contacted',
       'in_progress',
+      'test',
       'converted',
       'allocated',
       'closed',
@@ -727,7 +728,7 @@ describe('Student Enquiry — Payload REST endpoints (admin only)', () => {
     const doc = json.doc || json
     expect(doc.enquiryStatus).toBe('contacted')
     expect(doc.adminNotes).toBe('Called parent; interested in trial class.')
-    expect(doc.assignedTo).toBe(1)
+    expect(typeof doc.assignedTo === 'object' ? doc.assignedTo.id : doc.assignedTo).toBe(1)
   })
 
   it('PATCH /:id: should reject closing via REST when changeReason is missing', async ({ skip }) => {

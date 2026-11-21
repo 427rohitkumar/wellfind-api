@@ -60,6 +60,7 @@ describe('Teachers Module API Endpoints (/api/teachers)', () => {
       collection: 'teacher-enquiries',
       id: app.id,
       data: {
+        registrationFee: { status: 'paid' },
         applicationStatus: 'approved',
       },
     })

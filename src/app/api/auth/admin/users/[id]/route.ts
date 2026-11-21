@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { isSuperAdminRole } from '@/lib/auth'
+import { isSuperAdminRole, SUPPORTED_ROLES } from '@/lib/auth'
 
 /**
  * PATCH /api/auth/admin/users/:id
@@ -19,6 +19,7 @@ export async function PATCH(
 
     const result: any = await (payload as any).auth({
       req: request as unknown as { headers: Headers },
+      headers: request.headers,
     })
     const { user } = result
 
@@ -57,7 +58,7 @@ export async function PATCH(
 
     const { email, role, status } = body
 
-    const validRoles = ['super_admin', 'teacher']
+    const validRoles: readonly string[] = SUPPORTED_ROLES
     const validStatuses = ['active', 'blocked', 'suspended']
 
     const updateData: Record<string, unknown> = {}

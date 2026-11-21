@@ -23,7 +23,7 @@ Date: 2026-11-17 · PRD `WA-BE-PRD-001` v1.0 · Playbook `WA-BE-EXEC-001` v1.0
 | 6 Matching | FR-E1–E2 | PASS (documented limitations) | PHASE-06 | student-teacher-matching.md |
 | 7 Allocation | FR-F1–F2 | PASS (documented limitations) | PHASE-07 | teacher-allocations.md |
 
-All eight phase audits exist in `Audit-docs/`; all API docs in `API-DOC/`.
+All eight phase audits exist in `Audit-docs/`; all API docs in `API-DOC/`. For the complete A-to-Z comprehensive feature and architecture audit, current position, and future roadmap, see [MASTER-BACKEND-COMPREHENSIVE-AUDIT.md](./MASTER-BACKEND-COMPREHENSIVE-AUDIT.md).
 
 ## 3. Collections added/changed
 New: `students`, `student-assessments`, `student-tests`, `student-test-payments`, `student-test-reports`, `student-test-report-shares`, `teacher-evaluations`, `teacher-matches`, `teacher-allocations`; global `teacher-evaluation-config`.

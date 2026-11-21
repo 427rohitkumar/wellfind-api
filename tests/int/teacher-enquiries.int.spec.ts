@@ -278,6 +278,7 @@ describe('Teacher Enquiry — database-backed API', () => {
       collection: 'teacher-enquiries',
       id: app.id,
       data: {
+        registrationFee: { status: 'paid' },
         applicationStatus: 'approved',
         reviewedAt: new Date().toISOString(),
       },
@@ -300,7 +301,7 @@ describe('Teacher Enquiry — database-backed API', () => {
     expect(profile.qualification).toBe('Ph.D. in Physics')
     expect(profile.experienceYears).toBe(7)
     expect(profile.approvalStatus).toBe('approved')
-    expect(profile.registrationFee?.status).toBe('pending')
+    expect(profile.registrationFee?.status).toBe('paid')
     expect(profile.kyc?.status).toBe('verified')
 
     // Idempotency: Repeated approval should not create a duplicate profile
@@ -308,6 +309,7 @@ describe('Teacher Enquiry — database-backed API', () => {
       collection: 'teacher-enquiries',
       id: app.id,
       data: {
+        registrationFee: { status: 'paid' },
         applicationStatus: 'approved',
         adminNotes: 'Repeated approval check',
       },
@@ -324,6 +326,41 @@ describe('Teacher Enquiry — database-backed API', () => {
 
     // Cleanup
     await payload.delete({ collection: 'teacher-profiles', id: profile.id })
+    await payload.delete({ collection: 'teacher-enquiries', id: app.id })
+  })
+
+  it('should block approval until the registration fee is paid or skipped', async ({ skip }) => {
+    if (!payload) skip()
+    const app = await payload.create({
+      collection: 'teacher-enquiries',
+      data: {
+        fullName: 'Fee Gate Teacher',
+        mobileNumber: `9${Math.floor(100000000 + Math.random() * 899999999)}`,
+        highestQualification: 'B.Ed',
+        teachingExperience: '2 years',
+        primarySubject: 'Maths',
+        classLevel: 'Class 6-10',
+        teachingLocality: 'Patna',
+        preferredAvailability: 'Evening',
+        agreedToPolicy: true,
+      },
+    })
+    for (const st of ['under_review', 'shortlisted']) {
+      await payload.update({ collection: 'teacher-enquiries', id: app.id, data: { applicationStatus: st } })
+    }
+    await expect(
+      payload.update({ collection: 'teacher-enquiries', id: app.id, data: { applicationStatus: 'approved' } }),
+    ).rejects.toThrow(/registration fee/i)
+
+    const done = await payload.update({
+      collection: 'teacher-enquiries',
+      id: app.id,
+      data: { registrationFee: { status: 'waived' }, applicationStatus: 'approved' },
+    })
+    expect(done.applicationStatus).toBe('approved')
+
+    const profiles = await payload.find({ collection: 'teacher-profiles', where: { teacherEnquiry: { equals: app.id } } })
+    for (const prof of profiles.docs) await payload.delete({ collection: 'teacher-profiles', id: prof.id })
     await payload.delete({ collection: 'teacher-enquiries', id: app.id })
   })
 
@@ -365,6 +402,7 @@ describe('Teacher Enquiry — database-backed API', () => {
       collection: 'teacher-enquiries',
       id: appApproved.id,
       data: {
+        registrationFee: { status: 'paid' },
         applicationStatus: 'approved',
       },
     })

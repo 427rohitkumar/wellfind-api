@@ -1,8 +1,10 @@
+import { isStaffUser } from '@/lib/permissions'
 import { commitTransaction, initTransaction, killTransaction, type Payload } from 'payload'
 import { isUniqueConstraintError, type AuthUserRecord } from '@/lib/api'
 import {
   allocationStatuses,
   buildActiveKey,
+  computeAllocationTerms,
   isActiveAllocationStatus,
   isValidAllocationStatus,
   TEACHER_SETTABLE_STATUSES,
@@ -49,9 +51,11 @@ export function serializeAllocation(doc: Record<string, any>) {
       ? {
           id: student.id,
           name: student.name,
+          gender: student.studentGender ?? null,
           studentClass: student.studentClass,
           locality: student.locality,
           preferredTiming: student.preferredTiming,
+          budgetRange: student.budgetRange ?? null,
           subjects: extractSubjectNames(student.subjects),
         }
       : null,
@@ -61,6 +65,10 @@ export function serializeAllocation(doc: Record<string, any>) {
     subject: doc.subject,
     status: doc.status,
     allocationNotes: doc.allocationNotes ?? null,
+    monthlyFee: doc.monthlyFee ?? null,
+    commissionPercent: doc.commissionPercent ?? null,
+    commissionAmount: doc.commissionAmount ?? null,
+    teacherPayout: doc.teacherPayout ?? null,
     allocatedBy: extractRelationId(doc.allocatedBy),
     allocatedAt: doc.allocatedAt,
     statusHistory: Array.isArray(doc.statusHistory)
@@ -97,6 +105,43 @@ function optionalNotes(raw: unknown): string | undefined {
   return raw.trim()
 }
 
+/**
+ * Parses optional commercial terms. Fee and commission % must be supplied together
+ * (or fall back to `existing` values on update). Returns undefined when neither is given.
+ */
+function parseTerms(body: Record<string, unknown>, existing?: Record<string, any>) {
+  const feeRaw = body.monthlyFee
+  const pctRaw = body.commissionPercent
+  if (feeRaw === undefined && pctRaw === undefined) return undefined
+  const fee = feeRaw === undefined ? existing?.monthlyFee : feeRaw
+  const pct = pctRaw === undefined ? existing?.commissionPercent : pctRaw
+  if (typeof fee !== 'number' || !Number.isFinite(fee) || fee <= 0 || fee > 10_000_000) {
+    throw badRequest('monthlyFee', 'monthlyFee must be a positive number.')
+  }
+  if (typeof pct !== 'number' || !Number.isFinite(pct) || pct < 0 || pct > 100) {
+    throw badRequest('commissionPercent', 'commissionPercent must be a number between 0 and 100.')
+  }
+
+  const round2 = (n: number) => Math.round(n * 100) / 100
+  if (
+    typeof body.teacherPayout === 'number' &&
+    Number.isFinite(body.teacherPayout) &&
+    body.teacherPayout >= 0 &&
+    body.teacherPayout <= fee
+  ) {
+    const teacherPayout = round2(body.teacherPayout)
+    const commissionAmount = round2(fee - teacherPayout)
+    return {
+      monthlyFee: round2(fee),
+      commissionPercent: round2(pct),
+      commissionAmount,
+      teacherPayout,
+    }
+  }
+
+  return computeAllocationTerms(fee, pct)
+}
+
 /** Finds the teacher profile linked to a logged-in teacher user. */
 export async function findTeacherProfileForUser(
   payload: Payload,
@@ -109,7 +154,31 @@ export async function findTeacherProfileForUser(
     depth: 0,
     overrideAccess: true,
   })
-  return (res.docs[0] as Record<string, any>) ?? null
+  if (res.docs[0]) return res.docs[0] as Record<string, any>
+
+  // Approved before the profile was linked to the login: find it through the application and link it now.
+  const enq = await (payload as any).find({
+    collection: 'teacher-enquiries',
+    where: { teacherUser: { equals: userId } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const enquiry = enq.docs[0] as Record<string, any> | undefined
+  if (!enquiry) return null
+  const profileId = typeof enquiry.teacherProfile === 'object' ? enquiry.teacherProfile?.id : enquiry.teacherProfile
+  const byLink = profileId
+    ? await (payload as any).find({ collection: 'teacher-profiles', where: { id: { equals: profileId } }, limit: 1, depth: 0, overrideAccess: true })
+    : await (payload as any).find({ collection: 'teacher-profiles', where: { teacherEnquiry: { equals: enquiry.id } }, limit: 1, depth: 0, overrideAccess: true })
+  const profile = byLink.docs[0] as Record<string, any> | undefined
+  if (!profile) return null
+  // Only a profile created for this very application may be linked to the login.
+  const owner = typeof profile.teacherEnquiry === 'object' ? profile.teacherEnquiry?.id : profile.teacherEnquiry
+  if (owner !== enquiry.id) return null
+  if (!profile.user) {
+    await (payload as any).update({ collection: 'teacher-profiles', id: profile.id, data: { user: userId }, overrideAccess: true }).catch(() => undefined)
+  }
+  return { ...profile, user: userId }
 }
 
 /** `FR-F1` — Creates a final allocation atomically with duplicate protection. */
@@ -126,9 +195,10 @@ export async function createAllocation(
   const subject = body.subject.trim()
   if (subject.length > 100) throw badRequest('subject', 'subject must be at most 100 characters.')
   const allocationNotes = optionalNotes(body.allocationNotes)
+  const terms = parseTerms(body)
 
   try {
-    return await runInTransaction(payload, admin, async (txReq) => {
+    const created = await runInTransaction(payload, admin, async (txReq) => {
       const student = (await (payload as any).findByID({
         collection: 'students',
         id: studentId,
@@ -203,6 +273,7 @@ export async function createAllocation(
           subject,
           status: 'assigned',
           ...(allocationNotes ? { allocationNotes } : {}),
+          ...(terms ?? {}),
           allocatedBy: admin.id,
           allocatedAt: nowIso,
           activeKey,
@@ -213,8 +284,37 @@ export async function createAllocation(
         overrideAccess: true,
         req: txReq,
       })) as Record<string, any>
+
+      // Moving the student into a live allocation also closes the loop on the enquiry:
+      // `converted` (waiting in the allocation queue) -> `allocated`.
+      const enquiryId = extractRelationId(student.studentEnquiry)
+      if (enquiryId) {
+        const enquiry = (await (payload as any).findByID({
+          collection: 'student-enquiries',
+          id: enquiryId,
+          disableErrors: true,
+          depth: 0,
+          overrideAccess: true,
+          req: txReq,
+        })) as Record<string, any> | null
+        if (enquiry?.enquiryStatus === 'converted') {
+          await (payload as any).update({
+            collection: 'student-enquiries',
+            id: enquiryId,
+            data: { enquiryStatus: 'allocated' },
+            overrideAccess: true,
+            req: txReq,
+          })
+        }
+      }
       return serializeAllocation(created)
     })
+    // Tell the teacher about the new student (after commit; never blocks the allocation).
+    const { notifyTeacherAllocated } = await import('@/services/mailNotifications')
+    await notifyTeacherAllocated(payload, created.id)
+    const { pushTeacherAllocated } = await import('@/services/pushEvents')
+    pushTeacherAllocated(payload, created.id)
+    return created
   } catch (err) {
     if (!(err instanceof ServiceError) && isUniqueConstraintError(err)) {
       throw new ServiceError('An active allocation already exists for this student, teacher and subject.', 409)
@@ -293,7 +393,7 @@ async function loadAllocationForUser(
     { field: 'allocationId', message: 'Allocation does not exist.' },
   ])
   if (!doc) throw notFound
-  if (user.role === 'super_admin') return { doc, isAdmin: true }
+  if (isStaffUser(user)) return { doc, isAdmin: true }
   if (user.role !== 'teacher') throw notFound
   const profile = await findTeacherProfileForUser(payload, user.id)
   // Other teachers' allocations are reported as not found to avoid leaking existence.
@@ -307,14 +407,20 @@ export async function getAllocation(payload: Payload, id: number, user: AuthUser
   return serializeAllocation(doc)
 }
 
-/** `FR-F2` — Updates permitted descriptive fields (admin only): `allocationNotes`. */
+/** `FR-F2` — Updates permitted fields (admin only): `allocationNotes`, `monthlyFee`, `commissionPercent`. */
 export async function updateAllocation(payload: Payload, id: number, body: Record<string, unknown>) {
-  const unknown = Object.keys(body).filter((k) => k !== 'allocationNotes')
+  const allowed = new Set(['allocationNotes', 'monthlyFee', 'commissionPercent'])
+  const unknown = Object.keys(body).filter((k) => !allowed.has(k))
   if (unknown.length > 0) {
-    throw badRequest(unknown[0]!, `Field "${unknown[0]}" cannot be updated. Only allocationNotes is permitted.`)
+    throw badRequest(
+      unknown[0]!,
+      `Field "${unknown[0]}" cannot be updated. Only allocationNotes, monthlyFee and commissionPercent are permitted.`,
+    )
   }
   const notes = optionalNotes(body.allocationNotes)
-  if (notes === undefined) throw badRequest('allocationNotes', 'allocationNotes is required.')
+  if (notes === undefined && body.monthlyFee === undefined && body.commissionPercent === undefined) {
+    throw badRequest('allocationNotes', 'Provide allocationNotes, monthlyFee or commissionPercent.')
+  }
   const existing = await (payload as any).findByID({
     collection: 'teacher-allocations',
     id,
@@ -327,10 +433,14 @@ export async function updateAllocation(payload: Payload, id: number, body: Recor
       { field: 'allocationId', message: 'Allocation does not exist.' },
     ])
   }
+  const terms = parseTerms(body, existing)
   const updated = await (payload as any).update({
     collection: 'teacher-allocations',
     id,
-    data: { allocationNotes: notes },
+    data: {
+      ...(notes !== undefined ? { allocationNotes: notes } : {}),
+      ...(terms ?? {}),
+    },
     depth: 1,
     overrideAccess: true,
   })
@@ -356,8 +466,10 @@ export async function updateAllocationStatus(
     reason = body.reason.trim() || undefined
   }
 
-  return runInTransaction(payload, user, async (txReq) => {
+  let byTeacher = false
+  const result = await runInTransaction(payload, user, async (txReq) => {
     const { doc, isAdmin } = await loadAllocationForUser(payload, id, user, txReq)
+    byTeacher = !isAdmin
     if (!isAdmin && !TEACHER_SETTABLE_STATUSES.includes(next)) {
       throw new ServiceError('Teachers may only accept or reject their own allocations.', 403)
     }
@@ -399,4 +511,7 @@ export async function updateAllocationStatus(
     })) as Record<string, any>
     return serializeAllocation(updated)
   })
+  const { pushAllocationStatus } = await import('@/services/pushEvents')
+  pushAllocationStatus(payload, id, next, byTeacher)
+  return result
 }

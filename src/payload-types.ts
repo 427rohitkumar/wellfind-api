@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    'user-files': UserFile;
     'student-enquiries': StudentEnquiry;
     students: Student;
     'student-assessments': StudentAssessment;
@@ -76,6 +77,11 @@ export interface Config {
     'student-test-payments': StudentTestPayment;
     'student-test-reports': StudentTestReport;
     'student-test-report-shares': StudentTestReportShare;
+    'enquiry-tests': EnquiryTest;
+    'teaching-sessions': TeachingSession;
+    'teacher-payouts': TeacherPayout;
+    'push-subscriptions': PushSubscription;
+    'allocation-work': AllocationWork;
     'teacher-documents': TeacherDocument;
     'teacher-enquiries': TeacherEnquiry;
     'teacher-evaluations': TeacherEvaluation;
@@ -83,6 +89,8 @@ export interface Config {
     'teacher-allocations': TeacherAllocation;
     'enquiry-audit-log': EnquiryAuditLog;
     'teacher-profiles': TeacherProfile;
+    'email-logs': EmailLog;
+    payments: Payment;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -92,6 +100,7 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'user-files': UserFilesSelect<false> | UserFilesSelect<true>;
     'student-enquiries': StudentEnquiriesSelect<false> | StudentEnquiriesSelect<true>;
     students: StudentsSelect<false> | StudentsSelect<true>;
     'student-assessments': StudentAssessmentsSelect<false> | StudentAssessmentsSelect<true>;
@@ -99,6 +108,11 @@ export interface Config {
     'student-test-payments': StudentTestPaymentsSelect<false> | StudentTestPaymentsSelect<true>;
     'student-test-reports': StudentTestReportsSelect<false> | StudentTestReportsSelect<true>;
     'student-test-report-shares': StudentTestReportSharesSelect<false> | StudentTestReportSharesSelect<true>;
+    'enquiry-tests': EnquiryTestsSelect<false> | EnquiryTestsSelect<true>;
+    'teaching-sessions': TeachingSessionsSelect<false> | TeachingSessionsSelect<true>;
+    'teacher-payouts': TeacherPayoutsSelect<false> | TeacherPayoutsSelect<true>;
+    'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
+    'allocation-work': AllocationWorkSelect<false> | AllocationWorkSelect<true>;
     'teacher-documents': TeacherDocumentsSelect<false> | TeacherDocumentsSelect<true>;
     'teacher-enquiries': TeacherEnquiriesSelect<false> | TeacherEnquiriesSelect<true>;
     'teacher-evaluations': TeacherEvaluationsSelect<false> | TeacherEvaluationsSelect<true>;
@@ -106,6 +120,8 @@ export interface Config {
     'teacher-allocations': TeacherAllocationsSelect<false> | TeacherAllocationsSelect<true>;
     'enquiry-audit-log': EnquiryAuditLogSelect<false> | EnquiryAuditLogSelect<true>;
     'teacher-profiles': TeacherProfilesSelect<false> | TeacherProfilesSelect<true>;
+    'email-logs': EmailLogsSelect<false> | EmailLogsSelect<true>;
+    payments: PaymentsSelect<false> | PaymentsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -158,7 +174,22 @@ export interface User {
   /**
    * Role determines access level within the system.
    */
-  role: 'super_admin' | 'teacher';
+  role:
+    | 'super_admin'
+    | 'operations_manager'
+    | 'student_counselor'
+    | 'teacher_coordinator'
+    | 'finance_manager'
+    | 'marketing_analyst'
+    | 'support_executive'
+    | 'teacher';
+  fullName?: string | null;
+  phone?: string | null;
+  gender?: ('male' | 'female' | 'other') | null;
+  /**
+   * Profile photo URL (set through POST /api/uploads).
+   */
+  avatar?: string | null;
   /**
    * Account status. Blocked and suspended accounts cannot authenticate. Blocked is admin-initiated; suspended is temporary/security-related.
    */
@@ -197,6 +228,33 @@ export interface User {
 export interface Media {
   id: number;
   alt: string;
+  kind?: ('avatar' | 'other') | null;
+  owner?: (number | null) | User;
+  prefix?: string | null;
+  _objectKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-files".
+ */
+export interface UserFile {
+  id: number;
+  owner: number | User;
+  label?: string | null;
+  category?: string | null;
+  prefix?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -242,6 +300,8 @@ export interface StudentEnquiry {
    * Locality name when it is not in the standard list.
    */
   customLocality?: string | null;
+  studentGender?: ('male' | 'female' | 'other') | null;
+  preferredTeacherGender?: ('male' | 'female' | 'any') | null;
   /**
    * Tuition budget range.
    */
@@ -270,7 +330,7 @@ export interface StudentEnquiry {
   /**
    * Internal enquiry status. Public submissions cannot set this field.
    */
-  enquiryStatus?: ('new' | 'contacted' | 'in_progress' | 'converted' | 'allocated' | 'closed') | null;
+  enquiryStatus?: ('new' | 'contacted' | 'in_progress' | 'test' | 'converted' | 'allocated' | 'closed') | null;
   /**
    * Internal admin notes. Public submissions cannot write this field.
    */
@@ -279,6 +339,16 @@ export interface StudentEnquiry {
    * Internal staff member assigned to handle this enquiry.
    */
   assignedTo?: (number | null) | User;
+  /**
+   * How the optional assessment test is delivered.
+   */
+  testMode?: ('physical' | 'virtual' | 'digital') | null;
+  testScheduledAt?: string | null;
+  /**
+   * Address for physical tests, meeting link for virtual tests.
+   */
+  testVenue?: string | null;
+  testNotes?: string | null;
   /**
    * Mandatory reason when closing or reopening an enquiry. Forwarded to the audit log and reset.
    */
@@ -306,6 +376,8 @@ export interface Student {
   locality: string;
   customLocality?: string | null;
   preferredTiming: string;
+  studentGender?: ('male' | 'female' | 'other') | null;
+  preferredTeacherGender?: ('male' | 'female' | 'any') | null;
   budgetRange?: string | null;
   learningNotes?: string | null;
   /**
@@ -454,25 +526,196 @@ export interface StudentTestReportShare {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "teacher-documents".
+ * via the `definition` "enquiry-tests".
  */
-export interface TeacherDocument {
+export interface EnquiryTest {
   id: number;
+  studentEnquiry: number | StudentEnquiry;
+  mode: 'physical' | 'digital';
   /**
-   * Human-readable description of the uploaded document.
+   * Test fee in INR (physical 99, digital 49).
    */
-  alt: string;
+  fee: number;
+  status: 'requested' | 'scheduled' | 'conducted' | 'report_ready' | 'cancelled';
+  payment?: {
+    status?: ('pending' | 'paid' | 'waived') | null;
+    paidAt?: string | null;
+    reference?: string | null;
+    note?: string | null;
+  };
+  /**
+   * Person who conducts a physical test.
+   */
+  tester?: (number | null) | User;
+  scheduledAt?: string | null;
+  /**
+   * Address for a physical test.
+   */
+  venue?: string | null;
+  schedulingNote?: string | null;
+  conductedAt?: string | null;
+  report?: {
+    iqScore?: number | null;
+    creativityScore?: number | null;
+    academicScore?: number | null;
+    strengths?: string | null;
+    improvementAreas?: string | null;
+    /**
+     * Guidance for the teacher: focus areas and effort needed.
+     */
+    recommendation?: string | null;
+    hoursPerWeek?: number | null;
+    testerNotes?: string | null;
+    reportedAt?: string | null;
+  };
+  history?:
+    | {
+        type: string;
+        at?: string | null;
+        by?: (number | null) | User;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teaching-sessions".
+ */
+export interface TeachingSession {
+  id: number;
+  allocation: number | TeacherAllocation;
+  /**
+   * YYYY-MM-DD
+   */
+  day: string;
+  /**
+   * HH:MM (24h)
+   */
+  startTime: string;
+  endTime: string;
+  status: 'scheduled' | 'taught' | 'missed' | 'cancelled';
+  topic?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-allocations".
+ */
+export interface TeacherAllocation {
+  id: number;
+  student: number | Student;
+  teacher: number | TeacherProfile;
+  subject: string;
+  status: 'assigned' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled';
+  allocationNotes?: string | null;
+  /**
+   * Weekly teaching slots set by the teacher.
+   */
+  timetable?:
+    | {
+        day: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+        startTime: string;
+        endTime: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Monthly tuition fee the student/parent pays (INR).
+   */
+  monthlyFee?: number | null;
+  /**
+   * Wellfind commission as a percentage of the monthly fee.
+   */
+  commissionPercent?: number | null;
+  commissionAmount?: number | null;
+  teacherPayout?: number | null;
+  allocatedBy: number | User;
+  allocatedAt: string;
+  /**
+   * Set only while the allocation is live.
+   */
+  activeKey?: string | null;
+  statusHistory?:
+    | {
+        fromStatus?: string | null;
+        toStatus: string;
+        reason?: string | null;
+        changedBy?: (number | null) | User;
+        changedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-profiles".
+ */
+export interface TeacherProfile {
+  id: number;
+  name: string;
+  email?: string | null;
+  mobile: string;
+  gender?: ('male' | 'female' | 'other') | null;
+  avatar?: string | null;
+  primarySubject: string;
+  qualification: string;
+  experienceYears?: number | null;
+  classLevels?: string | null;
+  locality?: string | null;
+  availability?: string | null;
+  about?: string | null;
+  applicantNotes?: string | null;
+  /**
+   * Linked originating teacher application record.
+   */
+  teacherEnquiry: number | TeacherEnquiry;
+  /**
+   * Teacher login account linked at approval (role assigned server-side).
+   */
+  user?: (number | null) | User;
+  evaluation?: (number | null) | TeacherEvaluation;
+  evaluationScore?: number | null;
+  availabilityStatus?: ('free' | 'allocated') | null;
+  approvedBy?: (number | null) | User;
+  approvedAt?: string | null;
+  approvalStatus: 'approved' | 'pending' | 'rejected';
+  registrationFee?: {
+    status?: ('paid' | 'pending' | 'failed' | 'waived') | null;
+    amount?: number | null;
+    currency?: string | null;
+    year?: string | null;
+    paymentDate?: string | null;
+    expiresAt?: string | null;
+    transactionRef?: string | null;
+  };
+  kyc?: {
+    status?: ('verified' | 'under_review' | 'pending' | 'rejected') | null;
+    aadhaarStatus?: string | null;
+    qualificationStatus?: string | null;
+    aadhaarDocument?: (number | null) | TeacherDocument;
+    qualificationDocument?: (number | null) | TeacherDocument;
+    reviewNotes?: string | null;
+    reviewedAt?: string | null;
+  };
+  studentAllocation?: {
+    status?: ('allocated' | 'partially_allocated' | 'unallocated') | null;
+    allocatedCount?: number | null;
+    studentsSummary?: string | null;
+    allocationDate?: string | null;
+  };
+  account?: {
+    status?: ('active' | 'inactive' | 'suspended') | null;
+  };
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -489,6 +732,7 @@ export interface TeacherEnquiry {
    * Optional email address.
    */
   email?: string | null;
+  gender?: ('male' | 'female' | 'other') | null;
   /**
    * e.g. B.Ed, M.Sc, M.A, PhD.
    */
@@ -572,6 +816,25 @@ export interface TeacherEnquiry {
    */
   changeReason?: string | null;
   /**
+   * Registration fee step between shortlisting and approval. Approval requires the fee to be paid or waived (skipped).
+   */
+  registrationFee?: {
+    status?: ('pending' | 'submitted' | 'paid' | 'waived') | null;
+    amount?: number | null;
+    paymentDate?: string | null;
+    paymentMethod?: ('razorpay' | 'upi' | 'bank_transfer' | 'other') | null;
+    submittedAt?: string | null;
+    expiresAt?: string | null;
+    transactionRef?: string | null;
+    notes?: string | null;
+  };
+  /**
+   * Dashboard login created for this applicant when shortlisted.
+   */
+  teacherUser?: (number | null) | User;
+  accountCreatedAt?: string | null;
+  credentialsEmailStatus?: ('sent' | 'failed') | null;
+  /**
    * Linked approved teacher profile in the main teachers network.
    */
   teacherProfile?: (number | null) | TeacherProfile;
@@ -580,63 +843,28 @@ export interface TeacherEnquiry {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "teacher-profiles".
+ * via the `definition` "teacher-documents".
  */
-export interface TeacherProfile {
+export interface TeacherDocument {
   id: number;
-  name: string;
-  email?: string | null;
-  mobile: string;
-  avatar?: string | null;
-  primarySubject: string;
-  qualification: string;
-  experienceYears?: number | null;
-  classLevels?: string | null;
-  locality?: string | null;
-  availability?: string | null;
-  applicantNotes?: string | null;
+  owner?: (number | null) | User;
   /**
-   * Linked originating teacher application record.
+   * Human-readable description of the uploaded document.
    */
-  teacherEnquiry: number | TeacherEnquiry;
-  /**
-   * Teacher login account linked at approval (role assigned server-side).
-   */
-  user?: (number | null) | User;
-  evaluation?: (number | null) | TeacherEvaluation;
-  evaluationScore?: number | null;
-  availabilityStatus?: ('free' | 'allocated') | null;
-  approvedBy?: (number | null) | User;
-  approvedAt?: string | null;
-  approvalStatus: 'approved' | 'pending' | 'rejected';
-  registrationFee?: {
-    status?: ('paid' | 'pending' | 'failed' | 'waived') | null;
-    amount?: number | null;
-    currency?: string | null;
-    year?: string | null;
-    paymentDate?: string | null;
-    transactionRef?: string | null;
-  };
-  kyc?: {
-    status?: ('verified' | 'under_review' | 'pending' | 'rejected') | null;
-    aadhaarStatus?: string | null;
-    qualificationStatus?: string | null;
-    aadhaarDocument?: (number | null) | TeacherDocument;
-    qualificationDocument?: (number | null) | TeacherDocument;
-    reviewNotes?: string | null;
-    reviewedAt?: string | null;
-  };
-  studentAllocation?: {
-    status?: ('allocated' | 'partially_allocated' | 'unallocated') | null;
-    allocatedCount?: number | null;
-    studentsSummary?: string | null;
-    allocationDate?: string | null;
-  };
-  account?: {
-    status?: ('active' | 'inactive' | 'suspended') | null;
-  };
+  alt: string;
+  prefix?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -733,6 +961,63 @@ export interface TeacherEvaluation {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-payouts".
+ */
+export interface TeacherPayout {
+  id: number;
+  allocation: number | TeacherAllocation;
+  teacher: number | TeacherProfile;
+  /**
+   * YYYY-MM
+   */
+  month: string;
+  amount: number;
+  paidAt: string;
+  reference?: string | null;
+  note?: string | null;
+  recordedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-subscriptions".
+ */
+export interface PushSubscription {
+  id: number;
+  user: number | User;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "allocation-work".
+ */
+export interface AllocationWork {
+  id: number;
+  allocation: number | TeacherAllocation;
+  kind: 'assignment' | 'test';
+  title: string;
+  description?: string | null;
+  /**
+   * YYYY-MM-DD
+   */
+  dueDate?: string | null;
+  status: 'assigned' | 'submitted' | 'graded' | 'missed';
+  marks?: number | null;
+  maxMarks?: number | null;
+  feedback?: string | null;
+  submittedAt?: string | null;
+  gradedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "teacher-matches".
  */
 export interface TeacherMatch {
@@ -752,36 +1037,6 @@ export interface TeacherMatch {
   qualityScore?: number | null;
   adminNotes?: string | null;
   createdBy: number | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "teacher-allocations".
- */
-export interface TeacherAllocation {
-  id: number;
-  student: number | Student;
-  teacher: number | TeacherProfile;
-  subject: string;
-  status: 'assigned' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled';
-  allocationNotes?: string | null;
-  allocatedBy: number | User;
-  allocatedAt: string;
-  /**
-   * Set only while the allocation is live.
-   */
-  activeKey?: string | null;
-  statusHistory?:
-    | {
-        fromStatus?: string | null;
-        toStatus: string;
-        reason?: string | null;
-        changedBy?: (number | null) | User;
-        changedAt?: string | null;
-        id?: string | null;
-      }[]
-    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -832,6 +1087,90 @@ export interface EnquiryAuditLog {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-logs".
+ */
+export interface EmailLog {
+  id: number;
+  recipient: string;
+  recipientName?: string | null;
+  template: string;
+  subject: string;
+  status: 'queued' | 'sent' | 'failed' | 'skipped';
+  error?: string | null;
+  attempts?: number | null;
+  messageId?: string | null;
+  sentAt?: string | null;
+  relatedType?: string | null;
+  relatedId?: string | null;
+  dedupeKey?: string | null;
+  /**
+   * False when the email carried credentials that are not stored.
+   */
+  retryable?: boolean | null;
+  templateData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments".
+ */
+export interface Payment {
+  id: number;
+  category: 'teacher_registration' | 'tuition_fee' | 'other';
+  status: 'created' | 'paid' | 'failed' | 'refunded';
+  /**
+   * Amount in INR (rupees).
+   */
+  amount: number;
+  currency?: string | null;
+  gateway?: string | null;
+  /**
+   * Razorpay key mode when the order was created. Test payments are not real money.
+   */
+  mode?: ('test' | 'live') | null;
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
+  receipt?: string | null;
+  /**
+   * upi, card, netbanking, wallet…
+   */
+  method?: string | null;
+  payerName?: string | null;
+  payerEmail?: string | null;
+  payerPhone?: string | null;
+  payerUser?: (number | null) | User;
+  teacherEnquiry?: (number | null) | TeacherEnquiry;
+  description?: string | null;
+  paidAt?: string | null;
+  failureReason?: string | null;
+  refundedAmount?: number | null;
+  /**
+   * Audit trail of gateway events for this payment.
+   */
+  events?:
+    | {
+        type: string;
+        at?: string | null;
+        source?: string | null;
+        eventId?: string | null;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -863,6 +1202,10 @@ export interface PayloadLockedDocument {
         value: number | Media;
       } | null)
     | ({
+        relationTo: 'user-files';
+        value: number | UserFile;
+      } | null)
+    | ({
         relationTo: 'student-enquiries';
         value: number | StudentEnquiry;
       } | null)
@@ -891,6 +1234,26 @@ export interface PayloadLockedDocument {
         value: number | StudentTestReportShare;
       } | null)
     | ({
+        relationTo: 'enquiry-tests';
+        value: number | EnquiryTest;
+      } | null)
+    | ({
+        relationTo: 'teaching-sessions';
+        value: number | TeachingSession;
+      } | null)
+    | ({
+        relationTo: 'teacher-payouts';
+        value: number | TeacherPayout;
+      } | null)
+    | ({
+        relationTo: 'push-subscriptions';
+        value: number | PushSubscription;
+      } | null)
+    | ({
+        relationTo: 'allocation-work';
+        value: number | AllocationWork;
+      } | null)
+    | ({
         relationTo: 'teacher-documents';
         value: number | TeacherDocument;
       } | null)
@@ -917,6 +1280,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'teacher-profiles';
         value: number | TeacherProfile;
+      } | null)
+    | ({
+        relationTo: 'email-logs';
+        value: number | EmailLog;
+      } | null)
+    | ({
+        relationTo: 'payments';
+        value: number | Payment;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -966,6 +1337,10 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   role?: T;
+  fullName?: T;
+  phone?: T;
+  gender?: T;
+  avatar?: T;
   status?: T;
   otpHash?: T;
   otpExpiresAt?: T;
@@ -998,6 +1373,32 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  kind?: T;
+  owner?: T;
+  prefix?: T;
+  _objectKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-files_select".
+ */
+export interface UserFilesSelect<T extends boolean = true> {
+  owner?: T;
+  label?: T;
+  category?: T;
+  prefix?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -1026,6 +1427,8 @@ export interface StudentEnquiriesSelect<T extends boolean = true> {
   preferredTiming?: T;
   locality?: T;
   customLocality?: T;
+  studentGender?: T;
+  preferredTeacherGender?: T;
   budgetRange?: T;
   name?: T;
   phoneNumber?: T;
@@ -1036,6 +1439,10 @@ export interface StudentEnquiriesSelect<T extends boolean = true> {
   enquiryStatus?: T;
   adminNotes?: T;
   assignedTo?: T;
+  testMode?: T;
+  testScheduledAt?: T;
+  testVenue?: T;
+  testNotes?: T;
   changeReason?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1061,6 +1468,8 @@ export interface StudentsSelect<T extends boolean = true> {
   locality?: T;
   customLocality?: T;
   preferredTiming?: T;
+  studentGender?: T;
+  preferredTeacherGender?: T;
   budgetRange?: T;
   learningNotes?: T;
   studentEnquiry?: T;
@@ -1199,10 +1608,124 @@ export interface StudentTestReportSharesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "enquiry-tests_select".
+ */
+export interface EnquiryTestsSelect<T extends boolean = true> {
+  studentEnquiry?: T;
+  mode?: T;
+  fee?: T;
+  status?: T;
+  payment?:
+    | T
+    | {
+        status?: T;
+        paidAt?: T;
+        reference?: T;
+        note?: T;
+      };
+  tester?: T;
+  scheduledAt?: T;
+  venue?: T;
+  schedulingNote?: T;
+  conductedAt?: T;
+  report?:
+    | T
+    | {
+        iqScore?: T;
+        creativityScore?: T;
+        academicScore?: T;
+        strengths?: T;
+        improvementAreas?: T;
+        recommendation?: T;
+        hoursPerWeek?: T;
+        testerNotes?: T;
+        reportedAt?: T;
+      };
+  history?:
+    | T
+    | {
+        type?: T;
+        at?: T;
+        by?: T;
+        note?: T;
+        id?: T;
+      };
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teaching-sessions_select".
+ */
+export interface TeachingSessionsSelect<T extends boolean = true> {
+  allocation?: T;
+  day?: T;
+  startTime?: T;
+  endTime?: T;
+  status?: T;
+  topic?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teacher-payouts_select".
+ */
+export interface TeacherPayoutsSelect<T extends boolean = true> {
+  allocation?: T;
+  teacher?: T;
+  month?: T;
+  amount?: T;
+  paidAt?: T;
+  reference?: T;
+  note?: T;
+  recordedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-subscriptions_select".
+ */
+export interface PushSubscriptionsSelect<T extends boolean = true> {
+  user?: T;
+  endpoint?: T;
+  p256dh?: T;
+  auth?: T;
+  userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "allocation-work_select".
+ */
+export interface AllocationWorkSelect<T extends boolean = true> {
+  allocation?: T;
+  kind?: T;
+  title?: T;
+  description?: T;
+  dueDate?: T;
+  status?: T;
+  marks?: T;
+  maxMarks?: T;
+  feedback?: T;
+  submittedAt?: T;
+  gradedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "teacher-documents_select".
  */
 export interface TeacherDocumentsSelect<T extends boolean = true> {
+  owner?: T;
   alt?: T;
+  prefix?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -1223,6 +1746,7 @@ export interface TeacherEnquiriesSelect<T extends boolean = true> {
   fullName?: T;
   mobileNumber?: T;
   email?: T;
+  gender?: T;
   highestQualification?: T;
   teachingExperience?: T;
   primarySubject?: T;
@@ -1241,6 +1765,21 @@ export interface TeacherEnquiriesSelect<T extends boolean = true> {
   teacherAvailability?: T;
   rejectionCategory?: T;
   changeReason?: T;
+  registrationFee?:
+    | T
+    | {
+        status?: T;
+        amount?: T;
+        paymentDate?: T;
+        paymentMethod?: T;
+        submittedAt?: T;
+        expiresAt?: T;
+        transactionRef?: T;
+        notes?: T;
+      };
+  teacherUser?: T;
+  accountCreatedAt?: T;
+  credentialsEmailStatus?: T;
   teacherProfile?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1332,6 +1871,18 @@ export interface TeacherAllocationsSelect<T extends boolean = true> {
   subject?: T;
   status?: T;
   allocationNotes?: T;
+  timetable?:
+    | T
+    | {
+        day?: T;
+        startTime?: T;
+        endTime?: T;
+        id?: T;
+      };
+  monthlyFee?: T;
+  commissionPercent?: T;
+  commissionAmount?: T;
+  teacherPayout?: T;
   allocatedBy?: T;
   allocatedAt?: T;
   activeKey?: T;
@@ -1373,6 +1924,7 @@ export interface TeacherProfilesSelect<T extends boolean = true> {
   name?: T;
   email?: T;
   mobile?: T;
+  gender?: T;
   avatar?: T;
   primarySubject?: T;
   qualification?: T;
@@ -1380,6 +1932,7 @@ export interface TeacherProfilesSelect<T extends boolean = true> {
   classLevels?: T;
   locality?: T;
   availability?: T;
+  about?: T;
   applicantNotes?: T;
   teacherEnquiry?: T;
   user?: T;
@@ -1397,6 +1950,7 @@ export interface TeacherProfilesSelect<T extends boolean = true> {
         currency?: T;
         year?: T;
         paymentDate?: T;
+        expiresAt?: T;
         transactionRef?: T;
       };
   kyc?:
@@ -1422,6 +1976,65 @@ export interface TeacherProfilesSelect<T extends boolean = true> {
     | T
     | {
         status?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-logs_select".
+ */
+export interface EmailLogsSelect<T extends boolean = true> {
+  recipient?: T;
+  recipientName?: T;
+  template?: T;
+  subject?: T;
+  status?: T;
+  error?: T;
+  attempts?: T;
+  messageId?: T;
+  sentAt?: T;
+  relatedType?: T;
+  relatedId?: T;
+  dedupeKey?: T;
+  retryable?: T;
+  templateData?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments_select".
+ */
+export interface PaymentsSelect<T extends boolean = true> {
+  category?: T;
+  status?: T;
+  amount?: T;
+  currency?: T;
+  gateway?: T;
+  mode?: T;
+  razorpayOrderId?: T;
+  razorpayPaymentId?: T;
+  receipt?: T;
+  method?: T;
+  payerName?: T;
+  payerEmail?: T;
+  payerPhone?: T;
+  payerUser?: T;
+  teacherEnquiry?: T;
+  description?: T;
+  paidAt?: T;
+  failureReason?: T;
+  refundedAmount?: T;
+  events?:
+    | T
+    | {
+        type?: T;
+        at?: T;
+        source?: T;
+        eventId?: T;
+        note?: T;
+        id?: T;
       };
   updatedAt?: T;
   createdAt?: T;

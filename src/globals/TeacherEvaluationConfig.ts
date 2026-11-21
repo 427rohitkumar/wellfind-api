@@ -1,5 +1,5 @@
 import { ValidationError, type GlobalConfig } from 'payload'
-import { isActiveSuperAdmin } from '@/lib/auth'
+import { canRead, canWrite } from '@/lib/permissions'
 import {
   DEFAULT_INTERVIEW_WEIGHT,
   DEFAULT_WRITTEN_TEST_WEIGHT,
@@ -17,8 +17,8 @@ export const TeacherEvaluationConfig: GlobalConfig = {
   slug: 'teacher-evaluation-config',
   label: 'Teacher Evaluation Settings',
   access: {
-    read: ({ req: { user } }) => isActiveSuperAdmin(user),
-    update: ({ req: { user } }) => isActiveSuperAdmin(user),
+    read: ({ req: { user } }) => canRead(user, 'teacher_inquiries'),
+    update: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
   },
   fields: [
     {

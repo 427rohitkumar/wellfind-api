@@ -46,6 +46,8 @@ export interface SerializedTeacherProfile {
   id: unknown
   name: unknown
   email: unknown
+  gender: unknown
+  avatar: unknown
   mobile: unknown
   primarySubject: unknown
   qualification: unknown
@@ -69,6 +71,8 @@ export function serializeTeacherProfile(doc: Record<string, any>): SerializedTea
     id: doc.id,
     name: doc.name,
     email: doc.email ?? null,
+    gender: doc.gender ?? null,
+    avatar: doc.avatar ?? null,
     mobile: doc.mobile,
     primarySubject: doc.primarySubject,
     qualification: doc.qualification,
@@ -131,6 +135,15 @@ export async function approveTeacherEnquiry(
           `Teacher application in status "${status}" cannot be approved. A completed evaluation is required.`,
           409,
           [{ field: 'applicationStatus', message: 'Application must be evaluation_completed.' }],
+        )
+      }
+
+      const feeStatus = String((enquiry.registrationFee as Record<string, unknown> | undefined)?.status || 'pending')
+      if (feeStatus !== 'paid' && feeStatus !== 'waived') {
+        throw new ServiceError(
+          'The registration fee must be marked paid or skipped before approval.',
+          409,
+          [{ field: 'registrationFee', message: 'Registration fee is still pending.' }],
         )
       }
 
@@ -235,6 +248,8 @@ export async function approveTeacherEnquiry(
           applicationStatus: 'approved',
           reviewedBy: adminUser.id,
           reviewedAt: nowIso,
+          // Keep the login linked to the application so the teacher portal can find it.
+          ...(extractRelationId(enquiry.teacherUser) ? {} : { teacherUser: userDoc.id }),
         },
         overrideAccess: true,
         req: txReq,

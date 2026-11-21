@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@/payload.config'
-import { isSuperAdminRole } from '@/lib/auth'
+import {  } from '@/lib/auth'
+import { canAccessRequest } from '@/lib/permissions'
 import { syncApprovedTeacherProfile } from '@/collections/TeacherEnquiries'
 
 /**
@@ -17,7 +18,7 @@ export async function GET(request: Request): Promise<Response> {
     })
     const { user } = authResult
 
-    if (!isSuperAdminRole(user)) {
+    if (!canAccessRequest(user, request)) {
       return Response.json({ error: 'Super admin access required.' }, { status: 403 })
     }
 
@@ -102,7 +103,7 @@ export async function POST(request: Request): Promise<Response> {
     })
     const { user } = authResult
 
-    if (!isSuperAdminRole(user)) {
+    if (!canAccessRequest(user, request)) {
       return Response.json({ error: 'Super admin access required.' }, { status: 403 })
     }
 

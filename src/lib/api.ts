@@ -1,7 +1,8 @@
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
-import { isBlockedOrSuspended, isSuperAdminRole } from '@/lib/auth'
+import { isBlockedOrSuspended } from '@/lib/auth'
+import { canAccessRequest } from '@/lib/permissions'
 import { parsePositiveIntId } from '@/lib/studentValidation'
 
 export interface ApiFieldError {
@@ -93,10 +94,10 @@ export async function requireSuperAdmin(request: Request): Promise<SuperAdminAut
     return active
   }
 
-  if (!isSuperAdminRole(active.user)) {
+  if (!canAccessRequest(active.user, request)) {
     return {
       ok: false,
-      response: apiError('Super admin access required.', 403),
+      response: apiError('You do not have access to this area.', 403),
     }
   }
 

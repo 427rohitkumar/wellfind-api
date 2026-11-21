@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { isAdminRole } from '@/lib/auth'
+import { permissionsFor } from '@/lib/permissions'
 
 /**
  * GET /api/auth/me
@@ -15,6 +15,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const result: any = await (payload as any).auth({
       req: request as unknown as { headers: Headers },
+      headers: request.headers,
     })
     const { user } = result
 
@@ -30,6 +31,10 @@ export async function GET(request: Request): Promise<Response> {
         email: u.email,
         role: u.role,
         status: u.status,
+        avatar: u.avatar ?? null,
+        name: u.fullName ?? null,
+        phone: u.phone ?? null,
+        permissions: permissionsFor(u),
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
       },

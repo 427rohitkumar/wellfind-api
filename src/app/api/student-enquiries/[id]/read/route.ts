@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@/payload.config'
-import { isSuperAdminRole } from '@/lib/auth'
+import {  } from '@/lib/auth'
+import { canAccessRequest } from '@/lib/permissions'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -16,7 +17,7 @@ async function handleMarkAsRead(request: Request, context: RouteContext): Promis
     })
     const { user } = authResult
 
-    if (!isSuperAdminRole(user)) {
+    if (!canAccessRequest(user, request)) {
       return Response.json({ error: 'Super admin access required.' }, { status: 403 })
     }
 

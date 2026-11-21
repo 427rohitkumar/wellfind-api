@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { ValidationError } from 'payload'
-import { isSuperAdminRole } from '@/lib/auth'
+import { canRead, canWrite } from '@/lib/permissions'
 import {
   CONVERTIBLE_ENQUIRY_STATUSES,
   enquirySources,
@@ -62,7 +62,9 @@ export class StudentWorkflowError extends ValidationError {
 export const VALID_STUDENT_STATUS_TRANSITIONS: Record<EnquiryStatus, readonly EnquiryStatus[]> = {
   new: ['contacted', 'closed'],
   contacted: ['in_progress', 'closed'],
-  in_progress: ['converted', 'closed'],
+  // `test` is an optional, skippable step: in_progress may go straight to converted.
+  in_progress: ['test', 'converted', 'closed'],
+  test: ['in_progress', 'converted', 'closed'],
   converted: ['allocated', 'closed'],
   closed: ['contacted', 'in_progress'],
   allocated: [],
@@ -92,7 +94,7 @@ export function isStudentReasonRequired(from: EnquiryStatus, to: EnquiryStatus):
 export function canManageStudentEnquiries(
   user: { role?: string | null } | null | undefined,
 ): boolean {
-  return isSuperAdminRole(user)
+  return canWrite(user, 'student_inquiries')
 }
 
 export const StudentEnquiries: CollectionConfig = {
@@ -104,7 +106,7 @@ export const StudentEnquiries: CollectionConfig = {
   access: {
     // Public enquiry submission — unauthenticated visitors may create enquiries.
     create: () => true,
-    read: ({ req: { user } }) => canManageStudentEnquiries(user),
+    read: ({ req: { user } }) => canRead(user, 'student_inquiries') || canRead(user, 'students'),
     update: ({ req: { user } }) => canManageStudentEnquiries(user),
     delete: ({ req: { user } }) => canManageStudentEnquiries(user),
   },
@@ -191,6 +193,26 @@ export const StudentEnquiries: CollectionConfig = {
       admin: {
         description: 'Locality name when it is not in the standard list.',
       },
+    },
+    {
+      name: 'studentGender',
+      label: 'Student gender',
+      type: 'select',
+      options: [
+        { label: 'Male', value: 'male' },
+        { label: 'Female', value: 'female' },
+        { label: 'Other', value: 'other' },
+      ],
+    },
+    {
+      name: 'preferredTeacherGender',
+      label: 'Preferred teacher gender',
+      type: 'select',
+      options: [
+        { label: 'Male teacher', value: 'male' },
+        { label: 'Female teacher', value: 'female' },
+        { label: 'Any', value: 'any' },
+      ],
     },
     {
       name: 'budgetRange',
@@ -324,6 +346,53 @@ export const StudentEnquiries: CollectionConfig = {
         description: 'Internal staff member assigned to handle this enquiry.',
       },
     },
+    // --- Optional pre-allocation test (admin only) ---
+    {
+      name: 'testMode',
+      label: 'Test mode',
+      type: 'select',
+      options: [
+        { label: 'Physical', value: 'physical' },
+        { label: 'Virtual', value: 'virtual' },
+        { label: 'Digital', value: 'digital' },
+      ],
+      access: {
+        create: ({ req: { user } }) => canManageStudentEnquiries(user),
+        update: ({ req: { user } }) => canManageStudentEnquiries(user),
+      },
+      admin: { description: 'How the optional assessment test is delivered.' },
+    },
+    {
+      name: 'testScheduledAt',
+      label: 'Test scheduled at',
+      type: 'date',
+      index: true,
+      access: {
+        create: ({ req: { user } }) => canManageStudentEnquiries(user),
+        update: ({ req: { user } }) => canManageStudentEnquiries(user),
+      },
+    },
+    {
+      name: 'testVenue',
+      label: 'Test venue / meeting link',
+      type: 'text',
+      maxLength: 500,
+      access: {
+        create: ({ req: { user } }) => canManageStudentEnquiries(user),
+        update: ({ req: { user } }) => canManageStudentEnquiries(user),
+      },
+      admin: { description: 'Address for physical tests, meeting link for virtual tests.' },
+    },
+    {
+      name: 'testNotes',
+      label: 'Test notes / result',
+      type: 'textarea',
+      maxLength: 2000,
+      access: {
+        create: ({ req: { user } }) => canManageStudentEnquiries(user),
+        update: ({ req: { user } }) => canManageStudentEnquiries(user),
+      },
+    },
     {
       name: 'changeReason',
       label: 'Change reason',
@@ -404,6 +473,17 @@ export const StudentEnquiries: CollectionConfig = {
               )
             }
 
+            // Moving into the optional test step requires a mode. Scheduling lives in the Tests module.
+            if (targetStatus === 'test') {
+              const mode = data.testMode ?? originalDoc?.testMode
+              if (!mode) {
+                throw new StudentWorkflowError(
+                  'Test mode is required to move an enquiry to the test step.',
+                  'testMode',
+                )
+              }
+            }
+
             // Stash sanitized reason in req.context for afterChange audit logger
             if (!req.context) {
               req.context = {}
@@ -421,6 +501,14 @@ export const StudentEnquiries: CollectionConfig = {
     afterChange: [
       async ({ operation, previousDoc, originalDoc, doc, req }: any) => {
         const prevDoc = previousDoc || originalDoc
+        if (operation === 'create' && !req?.context?.skipPush) {
+          try {
+            const { pushNewStudentEnquiry } = await import('@/services/pushEvents')
+            pushNewStudentEnquiry(req.payload, doc)
+          } catch {
+            /* a push must never fail the submission */
+          }
+        }
         // Only log updates, not creates (initial default status is not an admin change)
         if (operation === 'create' || operation !== 'update') {
           return

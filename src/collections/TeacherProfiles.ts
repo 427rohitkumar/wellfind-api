@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 
 import { canManageTeacherEnquiries } from './TeacherEnquiries'
@@ -9,10 +10,10 @@ export const TeacherProfiles: CollectionConfig = {
     defaultColumns: ['name', 'mobile', 'primarySubject', 'qualification', 'approvalStatus', 'createdAt'],
   },
   access: {
-    create: ({ req: { user } }) => canManageTeacherEnquiries(user),
-    read: ({ req: { user } }) => canManageTeacherEnquiries(user),
-    update: ({ req: { user } }) => canManageTeacherEnquiries(user),
-    delete: ({ req: { user } }) => canManageTeacherEnquiries(user),
+    create: ({ req: { user } }) => canWrite(user, 'teachers'),
+    read: ({ req: { user } }) => canRead(user, 'teachers'),
+    update: ({ req: { user } }) => canWrite(user, 'teachers'),
+    delete: ({ req: { user } }) => canWrite(user, 'teachers'),
   },
   fields: [
     {
@@ -33,6 +34,16 @@ export const TeacherProfiles: CollectionConfig = {
       type: 'text',
       required: true,
       maxLength: 20,
+    },
+    {
+      name: 'gender',
+      label: 'Gender',
+      type: 'select',
+      options: [
+        { label: 'Male', value: 'male' },
+        { label: 'Female', value: 'female' },
+        { label: 'Other', value: 'other' },
+      ],
     },
     {
       name: 'avatar',
@@ -76,6 +87,12 @@ export const TeacherProfiles: CollectionConfig = {
       label: 'Availability',
       type: 'text',
       maxLength: 200,
+    },
+    {
+      name: 'about',
+      label: 'About (written by the teacher)',
+      type: 'textarea',
+      maxLength: 1000,
     },
     {
       name: 'applicantNotes',
@@ -185,6 +202,7 @@ export const TeacherProfiles: CollectionConfig = {
           type: 'text',
           defaultValue: 'Pending',
         },
+        { name: 'expiresAt', label: 'Registration valid until', type: 'date' },
         {
           name: 'transactionRef',
           label: 'Transaction Reference',

@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 import { isActiveSuperAdmin } from '@/lib/auth'
 import { reportShareChannels, reportShareStatuses } from '@/lib/physicalTestValidation'
@@ -28,8 +29,8 @@ export const StudentTestReportShares: CollectionConfig = {
     ],
   },
   access: {
-    create: ({ req: { user } }) => isActiveSuperAdmin(user),
-    read: ({ req: { user } }) => isActiveSuperAdmin(user),
+    create: ({ req: { user } }) => canWrite(user, 'students'),
+    read: ({ req: { user } }) => canRead(user, 'students'),
     update: () => false,
     delete: () => false,
   },

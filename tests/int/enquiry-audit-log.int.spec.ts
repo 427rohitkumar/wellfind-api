@@ -930,7 +930,7 @@ describe('Enquiry Audit Log — server-side status change tracking', () => {
           const t3 = await payload.update({
             collection: 'teacher-enquiries',
             id: teacher.id,
-            data: { applicationStatus: 'approved' },
+            data: { applicationStatus: 'approved', registrationFee: { status: 'paid' } },
           })
           expect(t3.applicationStatus).toBe('approved')
           // Newly approved teacher has default availability 'free'
@@ -964,7 +964,7 @@ describe('Enquiry Audit Log — server-side status change tracking', () => {
             payload.update({
               collection: 'teacher-enquiries',
               id: teacher.id,
-              data: { applicationStatus: 'approved' },
+              data: { applicationStatus: 'approved', registrationFee: { status: 'paid' } },
             })
           ).rejects.toThrow(/Invalid application status transition/i)
 
@@ -1197,7 +1197,7 @@ describe('Enquiry Audit Log — server-side status change tracking', () => {
           await payload.update({
             collection: 'teacher-enquiries',
             id: teacher.id,
-            data: { applicationStatus: 'approved' },
+            data: { applicationStatus: 'approved', registrationFee: { status: 'paid' } },
           })
 
           // Attempting to move out of approved must fail
@@ -1254,7 +1254,7 @@ describe('Enquiry Audit Log — server-side status change tracking', () => {
           const approved = await payload.update({
             collection: 'teacher-enquiries',
             id: teacher.id,
-            data: { applicationStatus: 'approved' },
+            data: { applicationStatus: 'approved', registrationFee: { status: 'paid' } },
           })
           expect(approved.applicationStatus).toBe('approved')
           expect(approved.teacherAvailability).toBe('free')

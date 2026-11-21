@@ -2,7 +2,8 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { getClientIP, isSuperAdminRole, rateLimit } from '@/lib/auth'
+import { getClientIP,  rateLimit } from '@/lib/auth'
+import { canAccessRequest } from '@/lib/permissions'
 import {
   isAllowedDocumentMimeType,
   MAX_DOCUMENT_SIZE_BYTES,
@@ -28,6 +29,7 @@ function pickPublicTeacherFields(doc: Record<string, unknown>): Record<string, u
     fullName: doc.fullName,
     mobileNumber: doc.mobileNumber,
     email: doc.email,
+    gender: doc.gender ?? null,
     highestQualification: doc.highestQualification,
     teachingExperience: doc.teachingExperience,
     primarySubject: doc.primarySubject,
@@ -145,6 +147,7 @@ export async function POST(request: Request): Promise<Response> {
   const fullName = getTextField(formData, 'fullName')
   const mobileNumber = getTextField(formData, 'mobileNumber')
   const email = getTextField(formData, 'email')
+  const gender = getTextField(formData, 'gender')
   const highestQualification = getTextField(formData, 'highestQualification')
   const teachingExperience = getTextField(formData, 'teachingExperience')
   const primarySubject = getTextField(formData, 'primarySubject')
@@ -157,6 +160,7 @@ export async function POST(request: Request): Promise<Response> {
   const requiredFields: [string, string | undefined][] = [
     ['fullName', fullName],
     ['mobileNumber', mobileNumber],
+    ['email', email],
     ['highestQualification', highestQualification],
     ['teachingExperience', teachingExperience],
     ['primarySubject', primarySubject],
@@ -180,10 +184,10 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 
-  // Optional email length
-  if (email !== undefined && email.length > 200) {
+  // Email format validation
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
     return Response.json(
-      { error: 'Email must be at most 200 characters.' },
+      { error: 'Valid email address is required (max 200 characters).' },
       { status: 400 },
     )
   }
@@ -258,6 +262,7 @@ export async function POST(request: Request): Promise<Response> {
         fullName,
         mobileNumber: normalizeTeacherPhoneNumber(mobileNumber),
         email,
+        ...(gender === 'male' || gender === 'female' || gender === 'other' ? { gender } : {}),
         highestQualification,
         teachingExperience,
         primarySubject,
@@ -310,7 +315,7 @@ export async function GET(request: Request): Promise<Response> {
     })
     const { user } = authResult
 
-    if (!isSuperAdminRole(user)) {
+    if (!canAccessRequest(user, request)) {
       return Response.json({ error: 'Super admin access required.' }, { status: 403 })
     }
 

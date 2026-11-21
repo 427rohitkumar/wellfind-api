@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import { ValidationError, type CollectionConfig } from 'payload'
 import { isActiveSuperAdmin } from '@/lib/auth'
 import { extractRelationId } from '@/lib/studentValidation'
@@ -81,10 +82,10 @@ export const TeacherEvaluations: CollectionConfig = {
     ],
   },
   access: {
-    create: ({ req: { user } }) => isActiveSuperAdmin(user),
-    read: ({ req: { user } }) => isActiveSuperAdmin(user),
-    update: ({ req: { user } }) => isActiveSuperAdmin(user),
-    delete: ({ req: { user } }) => isActiveSuperAdmin(user),
+    create: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
+    read: ({ req: { user } }) => canRead(user, 'teacher_inquiries'),
+    update: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
+    delete: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
   },
   indexes: [
     {

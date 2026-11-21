@@ -5,6 +5,7 @@ export const enquiryStatuses = [
   'new',
   'contacted',
   'in_progress',
+  'test',
   'converted',
   'allocated',
   'closed',
@@ -15,7 +16,12 @@ export const CONVERTIBLE_ENQUIRY_STATUSES: readonly EnquiryStatus[] = [
   'new',
   'contacted',
   'in_progress',
+  'test',
 ] as const
+
+/** Optional pre-allocation assessment delivery modes. */
+export const enquiryTestModes = ['physical', 'virtual', 'digital'] as const
+export type EnquiryTestMode = (typeof enquiryTestModes)[number]
 
 export const enquirySources = [
   'website',
@@ -265,6 +271,8 @@ export interface ValidatedEnquiryPayload {
   customSubject?: string
   customLocality?: string
   additionalNotes?: string
+  studentGender?: 'male' | 'female' | 'other'
+  preferredTeacherGender?: 'male' | 'female' | 'any'
 }
 
 export interface ValidateEnquiryOptions {
@@ -418,6 +426,20 @@ export function validateAndBuildEnquiryData(
     additionalNotes.trim().length > 0
   ) {
     data.additionalNotes = additionalNotes.trim()
+  }
+
+  const { studentGender, preferredTeacherGender } = body
+  if (studentGender !== undefined && studentGender !== null && studentGender !== '') {
+    if (studentGender !== 'male' && studentGender !== 'female' && studentGender !== 'other') {
+      return { ok: false, field: 'studentGender', message: "studentGender must be 'male', 'female' or 'other'." }
+    }
+    data.studentGender = studentGender
+  }
+  if (preferredTeacherGender !== undefined && preferredTeacherGender !== null && preferredTeacherGender !== '') {
+    if (preferredTeacherGender !== 'male' && preferredTeacherGender !== 'female' && preferredTeacherGender !== 'any') {
+      return { ok: false, field: 'preferredTeacherGender', message: "preferredTeacherGender must be 'male', 'female' or 'any'." }
+    }
+    data.preferredTeacherGender = preferredTeacherGender
   }
 
   return { ok: true, data }

@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 import { isActiveSuperAdmin } from '@/lib/auth'
 import {
@@ -57,10 +58,10 @@ export const StudentAssessments: CollectionConfig = {
     ],
   },
   access: {
-    create: ({ req: { user } }) => isActiveSuperAdmin(user),
-    read: ({ req: { user } }) => isActiveSuperAdmin(user),
-    update: ({ req: { user } }) => isActiveSuperAdmin(user),
-    delete: ({ req: { user } }) => isActiveSuperAdmin(user),
+    create: ({ req: { user } }) => canWrite(user, 'students'),
+    read: ({ req: { user } }) => canRead(user, 'students'),
+    update: ({ req: { user } }) => canWrite(user, 'students'),
+    delete: ({ req: { user } }) => canWrite(user, 'students'),
   },
   fields: [
     {

@@ -1,3 +1,4 @@
+import { permissionsFor } from '@/lib/permissions'
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
@@ -125,6 +126,9 @@ export async function POST(request: Request): Promise<Response> {
         email: user.email,
         role: user.role,
         status: user.status,
+        avatar: (user as { avatar?: string | null }).avatar ?? null,
+        name: (user as { fullName?: string | null }).fullName ?? null,
+        permissions: permissionsFor(user as { role?: string | null; status?: string | null }),
       },
     })
   } catch (err: unknown) {

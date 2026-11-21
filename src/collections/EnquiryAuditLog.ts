@@ -1,3 +1,4 @@
+import { canRead } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 
 /**
@@ -20,7 +21,7 @@ import type { CollectionConfig } from 'payload'
 
 export const canReadEnquiryAuditLog = (
   user: { role?: string | null } | null | undefined,
-): boolean => Boolean(user && user.role === 'super_admin')
+): boolean => canRead(user as { role?: string | null }, 'student_inquiries') || canRead(user as { role?: string | null }, 'teacher_inquiries')
 
 export const EnquiryAuditLog: CollectionConfig = {
   slug: 'enquiry-audit-log',

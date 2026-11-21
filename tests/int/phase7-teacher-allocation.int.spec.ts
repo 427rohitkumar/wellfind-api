@@ -314,4 +314,60 @@ describe('Phase 7 — Teacher allocation (`FR-F1`, `FR-F2`)', () => {
     expect((await ok.json()).data.allocationNotes).toBe('updated')
     expect((await patchRoute(req('PATCH', adminToken, { allocationNotes: 'x' }), ctx(999999999))).status).toBe(404)
   })
+
+  it('stores fee and commission terms and derives commission and teacher payout', async () => {
+    const s = await makeStudent()
+    const created = await allocate(s.id, teacherAProfile.id, { monthlyFee: 4000, commissionPercent: 25 })
+    expect(created.status).toBe(201)
+    const alloc = (await created.json()).data
+    expect(alloc.monthlyFee).toBe(4000)
+    expect(alloc.commissionAmount).toBe(1000)
+    expect(alloc.teacherPayout).toBe(3000)
+
+    const updated = await patchRoute(req('PATCH', adminToken, { commissionPercent: 10 }), ctx(alloc.id))
+    expect(updated.status).toBe(200)
+    const body = (await updated.json()).data
+    expect(body.commissionAmount).toBe(400)
+    expect(body.teacherPayout).toBe(3600)
+
+    expect((await patchRoute(req('PATCH', adminToken, { commissionPercent: 150 }), ctx(alloc.id))).status).toBe(400)
+    expect((await patchRoute(req('PATCH', adminToken, { monthlyFee: -5 }), ctx(alloc.id))).status).toBe(400)
+  })
+
+  it('rejects invalid commercial terms on create', async () => {
+    const s = await makeStudent()
+    expect((await allocate(s.id, teacherAProfile.id, { monthlyFee: 0, commissionPercent: 20 })).status).toBe(400)
+    expect((await allocate(s.id, teacherAProfile.id, { monthlyFee: 3000, commissionPercent: 101 })).status).toBe(400)
+    expect((await allocate(s.id, teacherAProfile.id, { monthlyFee: 3000 })).status).toBe(400)
+  })
+
+  it('marks the converted enquiry as allocated when a teacher is allocated', async () => {
+    const enquiry = await payload.create({
+      collection: 'student-enquiries',
+      data: {
+        name: `Phase7 Enquiry ${TAG}`,
+        phoneNumber: `+91 94${Math.floor(10000000 + Math.random() * 89999999)}`,
+        studentClass: 'Class 8',
+        subjects: [{ subject: SUBJECT }],
+        preferredTiming: 'Evenings',
+        locality: LOCALITY,
+        budgetRange: '3000-4000',
+        agreedToPolicy: true,
+      },
+      overrideAccess: true,
+    })
+    const s = await makeStudent({ studentEnquiry: enquiry.id })
+    await payload.update({
+      collection: 'student-enquiries',
+      id: enquiry.id,
+      data: { enquiryStatus: 'converted' },
+      overrideAccess: true,
+      context: { isStudentConversion: true },
+    })
+    const res = await allocate(s.id, teacherBProfile.id, { monthlyFee: 3500, commissionPercent: 20 })
+    expect(res.status).toBe(201)
+    const after = await payload.findByID({ collection: 'student-enquiries', id: enquiry.id, overrideAccess: true })
+    expect(after.enquiryStatus).toBe('allocated')
+    await payload.delete({ collection: 'student-enquiries', id: enquiry.id, overrideAccess: true })
+  })
 })

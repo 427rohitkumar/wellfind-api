@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 import { isActiveSuperAdmin, isBlockedOrSuspended, isTeacherRole } from '@/lib/auth'
 import { capabilityLevels, extractRelationId } from '@/lib/studentValidation'
@@ -31,7 +32,7 @@ export const StudentTestReports: CollectionConfig = {
     ],
   },
   access: {
-    create: ({ req: { user } }) => isActiveSuperAdmin(user),
+    create: ({ req: { user } }) => canWrite(user, 'students'),
     read: async ({ req }) => {
       const user = req.user
       if (isActiveSuperAdmin(user)) {
@@ -60,8 +61,8 @@ export const StudentTestReports: CollectionConfig = {
       }
       return false
     },
-    update: ({ req: { user } }) => isActiveSuperAdmin(user),
-    delete: ({ req: { user } }) => isActiveSuperAdmin(user),
+    update: ({ req: { user } }) => canWrite(user, 'students'),
+    delete: ({ req: { user } }) => canWrite(user, 'students'),
   },
   fields: [
     {

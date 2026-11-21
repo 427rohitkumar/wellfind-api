@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 import { ValidationError } from 'payload'
 
@@ -123,7 +124,7 @@ export function normalizeTeacherPhoneNumber(value: string): string {
 export function canManageTeacherEnquiries(
   user: { role?: string | null } | null | undefined,
 ): boolean {
-  return Boolean(user && user.role === 'super_admin')
+  return canWrite(user, 'teacher_inquiries')
 }
 
 export const TeacherEnquiries: CollectionConfig = {
@@ -142,7 +143,7 @@ export const TeacherEnquiries: CollectionConfig = {
   access: {
     // Public teacher application submission — unauthenticated visitors may apply.
     create: () => true,
-    read: ({ req: { user } }) => canManageTeacherEnquiries(user),
+    read: ({ req: { user } }) => canRead(user, 'teacher_inquiries'),
     update: ({ req: { user } }) => canManageTeacherEnquiries(user),
     delete: ({ req: { user } }) => canManageTeacherEnquiries(user),
   },
@@ -178,6 +179,16 @@ export const TeacherEnquiries: CollectionConfig = {
       admin: {
         description: 'Optional email address.',
       },
+    },
+    {
+      name: 'gender',
+      label: 'Gender',
+      type: 'select',
+      options: [
+        { label: 'Male', value: 'male' },
+        { label: 'Female', value: 'female' },
+        { label: 'Other', value: 'other' },
+      ],
     },
     {
       name: 'highestQualification',
@@ -401,6 +412,84 @@ export const TeacherEnquiries: CollectionConfig = {
       },
     },
     {
+      name: 'registrationFee',
+      label: 'Registration fee',
+      type: 'group',
+      access: {
+        create: ({ req: { user } }) => canManageTeacherEnquiries(user),
+        update: ({ req: { user } }) => canManageTeacherEnquiries(user),
+      },
+      admin: {
+        description:
+          'Registration fee step between shortlisting and approval. Approval requires the fee to be paid or waived (skipped).',
+      },
+      fields: [
+        {
+          name: 'status',
+          label: 'Fee status',
+          type: 'select',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Submitted (awaiting verification)', value: 'submitted' },
+            { label: 'Paid', value: 'paid' },
+            { label: 'Skipped (waived)', value: 'waived' },
+          ],
+          defaultValue: 'pending',
+        },
+        { name: 'amount', label: 'Amount (INR)', type: 'number', defaultValue: 1000, min: 0 },
+        { name: 'paymentDate', label: 'Payment date', type: 'date' },
+        {
+          name: 'paymentMethod',
+          label: 'Payment method',
+          type: 'select',
+          options: [
+            { label: 'Razorpay (online)', value: 'razorpay' },
+            { label: 'UPI', value: 'upi' },
+            { label: 'Bank transfer', value: 'bank_transfer' },
+            { label: 'Other', value: 'other' },
+          ],
+        },
+        { name: 'submittedAt', label: 'Submitted by teacher at', type: 'date' },
+        { name: 'expiresAt', label: 'Registration valid until', type: 'date' },
+        { name: 'transactionRef', label: 'Transaction reference', type: 'text', maxLength: 200 },
+        { name: 'notes', label: 'Notes', type: 'textarea', maxLength: 1000 },
+      ],
+    },
+    {
+      name: 'teacherUser',
+      label: 'Teacher login account',
+      type: 'relationship',
+      relationTo: 'users',
+      hasMany: false,
+      access: {
+        create: ({ req: { user } }) => canManageTeacherEnquiries(user),
+        update: ({ req: { user } }) => canManageTeacherEnquiries(user),
+      },
+      admin: { description: 'Dashboard login created for this applicant when shortlisted.' },
+    },
+    {
+      name: 'accountCreatedAt',
+      label: 'Account created at',
+      type: 'date',
+      access: {
+        create: ({ req: { user } }) => canManageTeacherEnquiries(user),
+        update: ({ req: { user } }) => canManageTeacherEnquiries(user),
+      },
+    },
+    {
+      name: 'credentialsEmailStatus',
+      label: 'Credentials email',
+      type: 'select',
+      options: [
+        { label: 'Sent', value: 'sent' },
+        { label: 'Failed / not sent', value: 'failed' },
+      ],
+      access: {
+        create: ({ req: { user } }) => canManageTeacherEnquiries(user),
+        update: ({ req: { user } }) => canManageTeacherEnquiries(user),
+      },
+    },
+    {
       name: 'teacherProfile',
       label: 'Teacher Profile',
       type: 'relationship',
@@ -451,6 +540,18 @@ export const TeacherEnquiries: CollectionConfig = {
               )
             }
 
+            // Approval requires the registration fee to be paid or skipped (waived).
+            if (targetStatus === 'approved') {
+              const feeStatus =
+                data.registrationFee?.status ?? originalDoc?.registrationFee?.status ?? 'pending'
+              if (feeStatus !== 'paid' && feeStatus !== 'waived') {
+                throw new TeacherWorkflowError(
+                  'The registration fee must be marked paid or skipped before this application can be approved.',
+                  'registrationFee',
+                )
+              }
+            }
+
             // Block reopening if prior rejection was for character/conduct
             if (currentStatus === 'rejected' && targetStatus === 'under_review') {
               if (originalDoc?.rejectionCategory === 'character_conduct') {
@@ -485,6 +586,29 @@ export const TeacherEnquiries: CollectionConfig = {
           }
         }
 
+        // A settled registration fee (paid or skipped) starts the registration validity period.
+        if (operation === 'update' && data.registrationFee && typeof data.registrationFee === 'object') {
+          const nextFee = data.registrationFee.status
+          const prevFee = originalDoc?.registrationFee ?? {}
+          if (
+            (nextFee === 'paid' || nextFee === 'waived') &&
+            nextFee !== prevFee.status &&
+            !data.registrationFee.expiresAt &&
+            !prevFee.expiresAt
+          ) {
+            const { getMailConfig } = await import('@/lib/mail/config')
+            const days = getMailConfig().registrationValidityDays
+            data.registrationFee = {
+              ...prevFee,
+              ...data.registrationFee,
+              expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
+              ...(nextFee === 'paid' && !data.registrationFee.paymentDate && !prevFee.paymentDate
+                ? { paymentDate: new Date().toISOString() }
+                : {}),
+            }
+          }
+        }
+
         // When approved, ensure teacherAvailability defaults to 'free' if not set
         if (
           data.applicationStatus === 'approved' &&
@@ -501,6 +625,41 @@ export const TeacherEnquiries: CollectionConfig = {
       },
     ],
     afterChange: [
+      // Email the applicant about status and registration-fee changes. Never blocks the update.
+      async ({ operation, previousDoc, doc, req }: any) => {
+        if (req?.context?.skipMail) return
+        if (operation === 'create') {
+          try {
+            const { notifyApplicationReceived } = await import('@/services/mailNotifications')
+            await notifyApplicationReceived(req.payload, doc)
+            const { pushNewTeacherApplication } = await import('@/services/pushEvents')
+            pushNewTeacherApplication(req.payload, doc)
+          } catch {
+            /* never fail the submission because of mail */
+          }
+          return
+        }
+        if (operation !== 'update') return
+        try {
+          const { notifyPaymentReceived, notifyTeacherStatusChange } = await import('@/services/mailNotifications')
+          await notifyTeacherStatusChange(req.payload, doc, previousDoc?.applicationStatus)
+          const { pushTeacherStatus, pushRegistrationPaid } = await import('@/services/pushEvents')
+          pushTeacherStatus(req.payload, doc, previousDoc?.applicationStatus)
+          const before = previousDoc?.registrationFee?.status
+          const after = doc?.registrationFee?.status
+          if (after !== before && (after === 'paid' || after === 'waived')) {
+            await notifyPaymentReceived(req.payload, doc)
+            if (after === 'paid') pushRegistrationPaid(req.payload, doc)
+          }
+          // Keep the Payments ledger complete when an admin marks the fee paid by hand.
+          if (after === 'paid' && before !== 'paid') {
+            const { recordManualRegistrationPayment } = await import('@/services/paymentService')
+            await recordManualRegistrationPayment(req.payload, doc)
+          }
+        } catch {
+          /* mail problems must never fail the workflow */
+        }
+      },
       async ({ operation, previousDoc, originalDoc, doc, req }: any) => {
         const prevDoc = previousDoc || originalDoc
         // Only log updates, not creates (initial default status is not an admin change)
@@ -602,8 +761,10 @@ export async function syncApprovedTeacherProfile(
       req,
     })
 
-    if (existingByMobile.docs.length > 0) {
-      const existing = existingByMobile.docs[0]
+    // A profile that belongs to a different application must never be adopted just because the mobile matches.
+    const adoptable = existingByMobile.docs.find((d: Record<string, any>) => !d.teacherEnquiry)
+    if (adoptable) {
+      const existing = adoptable
       await payload.update({
         collection: 'teacher-profiles',
         id: existing.id,
@@ -639,6 +800,7 @@ export async function syncApprovedTeacherProfile(
     collection: 'teacher-profiles',
     data: {
       name: doc.fullName,
+      gender: doc.gender || undefined,
       email: doc.email || null,
       mobile: doc.mobileNumber,
       primarySubject: doc.primarySubject,
@@ -649,14 +811,20 @@ export async function syncApprovedTeacherProfile(
       availability: doc.preferredAvailability || 'Flexible',
       applicantNotes: doc.additionalNotes || null,
       teacherEnquiry: doc.id,
+      ...(doc.teacherUser ? { user: typeof doc.teacherUser === 'object' ? doc.teacherUser.id : doc.teacherUser } : {}),
       approvalStatus: 'approved',
       registrationFee: {
-        status: 'pending',
-        amount: 1000,
+        status: doc.registrationFee?.status === 'paid' || doc.registrationFee?.status === 'waived'
+          ? doc.registrationFee.status
+          : 'pending',
+        amount: typeof doc.registrationFee?.amount === 'number' ? doc.registrationFee.amount : 1000,
         currency: 'INR',
         year: '2026–2027',
-        paymentDate: 'Pending',
-        transactionRef: 'None',
+        paymentDate: doc.registrationFee?.paymentDate
+          ? new Date(doc.registrationFee.paymentDate).toISOString().slice(0, 10)
+          : doc.registrationFee?.status === 'waived' ? 'Waived' : 'Pending',
+        expiresAt: doc.registrationFee?.expiresAt || null,
+        transactionRef: doc.registrationFee?.transactionRef || 'None',
       },
       kyc: {
         status: 'verified',

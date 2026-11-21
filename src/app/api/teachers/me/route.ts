@@ -26,6 +26,8 @@ export async function GET(request: Request): Promise<Response> {
         email: p.email ?? auth.user.email ?? null,
         mobile: p.mobile ?? null,
         avatar: p.avatar ?? null,
+        gender: p.gender ?? null,
+        about: p.about ?? null,
         primarySubject: p.primarySubject ?? null,
         qualification: p.qualification ?? null,
         experienceYears: p.experienceYears ?? 0,

@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 
 /**
@@ -20,18 +21,24 @@ import type { CollectionConfig } from 'payload'
 
 export const canManageTeacherDocuments = (
   user: { role?: string | null } | null | undefined,
-): boolean => Boolean(user && user.role === 'super_admin')
+): boolean => canWrite(user as { role?: string | null }, 'teacher_inquiries')
 
 export const TeacherDocuments: CollectionConfig = {
   slug: 'teacher-documents',
   upload: true,
   access: {
-    create: ({ req: { user } }) => canManageTeacherDocuments(user),
-    read: ({ req: { user } }) => canManageTeacherDocuments(user),
-    update: ({ req: { user } }) => canManageTeacherDocuments(user),
-    delete: ({ req: { user } }) => canManageTeacherDocuments(user),
+    create: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
+    read: ({ req: { user } }) => {
+      if (!user) return false
+      if (canRead(user, 'teacher_inquiries') || canRead(user, 'teachers')) return true
+      // A teacher can open the documents that belong to their own application.
+      return { owner: { equals: user.id } }
+    },
+    update: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
+    delete: ({ req: { user } }) => canWrite(user, 'teacher_inquiries'),
   },
   fields: [
+    { name: 'owner', type: 'relationship', relationTo: 'users', index: true },
     {
       name: 'alt',
       label: 'Description',

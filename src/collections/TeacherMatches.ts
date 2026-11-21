@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 import { isActiveSuperAdmin } from '@/lib/auth'
 import { matchStatuses } from '@/lib/teacherMatching'
@@ -14,10 +15,10 @@ export const TeacherMatches: CollectionConfig = {
     defaultColumns: ['student', 'teacher', 'matchStatus', 'createdAt'],
   },
   access: {
-    create: ({ req: { user } }) => isActiveSuperAdmin(user),
-    read: ({ req: { user } }) => isActiveSuperAdmin(user),
+    create: ({ req: { user } }) => canWrite(user, 'allocation'),
+    read: ({ req: { user } }) => canRead(user, 'allocation'),
     update: () => false,
-    delete: ({ req: { user } }) => isActiveSuperAdmin(user),
+    delete: ({ req: { user } }) => canWrite(user, 'allocation'),
   },
   fields: [
     { name: 'student', type: 'relationship', relationTo: 'students', required: true, index: true },

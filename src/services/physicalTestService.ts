@@ -1,3 +1,4 @@
+import { isStaffUser } from '@/lib/permissions'
 import { commitTransaction, initTransaction, killTransaction, type Payload } from 'payload'
 import { isUniqueConstraintError, type AuthUserRecord } from '@/lib/api'
 import {
@@ -298,7 +299,7 @@ async function findTestReportByTestId(
  * a physical test: active `super_admin` OR the currently assigned active tester.
  */
 function canAccessAssignedTest(user: AuthUserRecord, testDoc: Record<string, unknown>): boolean {
-  if (isActiveSuperAdmin(user)) {
+  if (isStaffUser(user)) {
     return true
   }
   if (isBlockedOrSuspended(user.status) || !isTeacherRole(user)) {
@@ -497,7 +498,7 @@ export async function getStudentTestById(
   const existingReport = await findTestReportByTestId(payload, testId)
 
   let payments: SerializedStudentTestPayment[] | undefined
-  if (isActiveSuperAdmin(currentUser)) {
+  if (isStaffUser(currentUser)) {
     const paymentRes = await (payload as any).find({
       collection: 'student-test-payments',
       where: { studentTest: { equals: testId } },
@@ -727,7 +728,7 @@ export async function assignPhysicalTestTester(
       ])
     }
 
-    if (!isTeacherRole(testerUser) && !isSuperAdminRole(testerUser)) {
+    if (!isTeacherRole(testerUser) && !isStaffUser(testerUser)) {
       throw new ServiceError('Tester must be an active teacher or super_admin user.', 400, [
         {
           field: 'testerUserId',

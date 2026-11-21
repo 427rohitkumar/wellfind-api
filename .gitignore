@@ -38,7 +38,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Environment files (never commit secrets to Git)
 .env
+.env.production
 
 /media
 

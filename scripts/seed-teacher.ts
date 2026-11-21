@@ -97,7 +97,7 @@ async function main(): Promise<void> {
   if (existingAllocations.docs.length === 0) {
     // Find a student record to allocate
     const students = await payload.find({
-      collection: 'student-records',
+      collection: 'students',
       limit: 2,
     })
 

@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { getClientIP, isSuperAdminRole, rateLimit } from '@/lib/auth'
+import { getClientIP, isSuperAdminRole, rateLimit, SUPPORTED_ROLES } from '@/lib/auth'
 
 /**
  * GET /api/auth/admin/users
@@ -118,7 +118,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // Validate role — only super_admin and teacher supported
-    const validRoles = ['super_admin', 'teacher'] as const
+    const validRoles = SUPPORTED_ROLES
     const userRole = role && validRoles.includes(role as any) ? (role as typeof validRoles[number]) : 'teacher'
 
     // Validate status — active, blocked, suspended

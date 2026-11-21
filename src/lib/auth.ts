@@ -1,4 +1,5 @@
 import type { User } from '@/payload-types'
+import { isStaffRole } from '@/lib/permissions'
 
 // In-memory rate limiter (per IP + endpoint). Use Redis in production.
 const rateLimitStore = new Map<
@@ -13,7 +14,16 @@ const OTP_EXPIRY_MINUTES = 10
 const OTP_RESEND_COOLDOWN_SECONDS = 60
 
 // Supported roles — additional roles can be added here without rewriting authorization logic
-export const SUPPORTED_ROLES = ['super_admin', 'teacher'] as const
+export const SUPPORTED_ROLES = [
+  'super_admin',
+  'operations_manager',
+  'student_counselor',
+  'teacher_coordinator',
+  'finance_manager',
+  'marketing_analyst',
+  'support_executive',
+  'teacher',
+] as const
 export type SupportedRole = (typeof SUPPORTED_ROLES)[number]
 
 // Supported account statuses
@@ -84,7 +94,7 @@ export function isTeacherRole(
 export function isAdminRole(
   user: { role?: string | null } | null | undefined,
 ): boolean {
-  return isSuperAdminRole(user)
+  return isSuperAdminRole(user) || isStaffRole(user?.role)
 }
 
 /**

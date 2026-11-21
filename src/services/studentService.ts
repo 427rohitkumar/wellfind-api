@@ -61,6 +61,8 @@ export function serializePublicEnquiry(
     customLocality: doc.customLocality,
     budgetRange: doc.budgetRange,
     name: doc.name,
+    studentGender: doc.studentGender ?? null,
+    preferredTeacherGender: doc.preferredTeacherGender ?? null,
     phoneNumber: doc.phoneNumber,
     additionalNotes: doc.additionalNotes,
     agreedToPolicy: doc.agreedToPolicy,
@@ -81,6 +83,10 @@ export function serializeAdminEnquiry(
     markAsRead: Boolean(doc.markAsRead),
     adminNotes: doc.adminNotes || null,
     assignedTo: extractRelationId(doc.assignedTo),
+    testMode: doc.testMode ?? null,
+    testScheduledAt: doc.testScheduledAt ?? null,
+    testVenue: doc.testVenue ?? null,
+    testNotes: doc.testNotes ?? null,
     updatedAt: doc.updatedAt,
   }
 }
@@ -95,6 +101,8 @@ export function serializeStudent(
     id: doc.id,
     name: doc.name,
     parentName: doc.parentName ?? null,
+    studentGender: doc.studentGender ?? null,
+    preferredTeacherGender: doc.preferredTeacherGender ?? null,
     phoneNumber: doc.phoneNumber,
     alternatePhoneNumber: doc.alternatePhoneNumber ?? null,
     parentEmail: doc.parentEmail ?? null,
@@ -342,6 +350,8 @@ export async function convertStudentEnquiry(
 
   const studentData: Record<string, unknown> = {
     name: String(enquiry.name || '').trim(),
+    studentGender: enquiry.studentGender || undefined,
+    preferredTeacherGender: enquiry.preferredTeacherGender || undefined,
     phoneNumber: normalizePhoneNumber(String(enquiry.phoneNumber || '')),
     studentClass: String(enquiry.studentClass || '').trim(),
     subjects: enquirySubjects.rows,

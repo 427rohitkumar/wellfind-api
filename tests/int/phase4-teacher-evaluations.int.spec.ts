@@ -186,7 +186,7 @@ async function createTestTeacherEnquiry(
   current = await payload.update({
     collection: 'teacher-enquiries',
     id: created.id,
-    data: { applicationStatus: 'approved' },
+    data: { applicationStatus: 'approved', registrationFee: { status: 'paid' } },
     overrideAccess: true,
   })
   const profiles = await payload.find({
@@ -1028,7 +1028,7 @@ describe('Phase 4 — Teacher Evaluation (`FR-C1` to `FR-C3`, `BR-10`, `BR-11`)'
       const approvedAfterEval = await payload.update({
         collection: 'teacher-enquiries',
         id: enquiryB.id,
-        data: { applicationStatus: 'approved' },
+        data: { applicationStatus: 'approved', registrationFee: { status: 'paid' } },
         overrideAccess: true,
       })
       expect(approvedAfterEval.applicationStatus).toBe('approved')

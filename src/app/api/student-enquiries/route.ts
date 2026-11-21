@@ -1,7 +1,8 @@
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { getClientIP, isSuperAdminRole, rateLimit } from '@/lib/auth'
+import { getClientIP,  rateLimit } from '@/lib/auth'
+import { canAccessRequest } from '@/lib/permissions'
 import { validateAndBuildEnquiryData } from '@/lib/studentValidation'
 import {
   serializeAdminEnquiry,
@@ -130,7 +131,7 @@ export async function GET(request: Request): Promise<Response> {
     })
     const { user } = authResult
 
-    if (!isSuperAdminRole(user)) {
+    if (!canAccessRequest(user, request)) {
       return Response.json({ error: 'Super admin access required.' }, { status: 403 })
     }
 

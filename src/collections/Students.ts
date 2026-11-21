@@ -1,3 +1,4 @@
+import { canRead, canWrite } from '@/lib/permissions'
 import type { CollectionConfig } from 'payload'
 import { canManageStudentEnquiries, StudentWorkflowError } from '@/collections/StudentEnquiries'
 import {
@@ -36,10 +37,10 @@ export const Students: CollectionConfig = {
     defaultColumns: ['name', 'studentClass', 'locality', 'status', 'createdAt'],
   },
   access: {
-    create: ({ req: { user } }) => canManageStudentEnquiries(user),
-    read: ({ req: { user } }) => canManageStudentEnquiries(user),
-    update: ({ req: { user } }) => canManageStudentEnquiries(user),
-    delete: ({ req: { user } }) => canManageStudentEnquiries(user),
+    create: ({ req: { user } }) => canWrite(user, 'students'),
+    read: ({ req: { user } }) => canRead(user, 'students'),
+    update: ({ req: { user } }) => canWrite(user, 'students'),
+    delete: ({ req: { user } }) => canWrite(user, 'students'),
   },
   fields: [
     {
@@ -169,6 +170,26 @@ export const Students: CollectionConfig = {
       type: 'text',
       required: true,
       maxLength: 100,
+    },
+    {
+      name: 'studentGender',
+      label: 'Student gender',
+      type: 'select',
+      options: [
+        { label: 'Male', value: 'male' },
+        { label: 'Female', value: 'female' },
+        { label: 'Other', value: 'other' },
+      ],
+    },
+    {
+      name: 'preferredTeacherGender',
+      label: 'Preferred teacher gender',
+      type: 'select',
+      options: [
+        { label: 'Male teacher', value: 'male' },
+        { label: 'Female teacher', value: 'female' },
+        { label: 'Any', value: 'any' },
+      ],
     },
     {
       name: 'budgetRange',

@@ -64,47 +64,27 @@ export const emailAdapter: EmailAdapter<void> = () => ({
 })
 
 /**
- * Sends an OTP email. Returns an object with `success` and optional `error`.
- * If SMTP is not configured, returns success=false with a clear error message
- * rather than throwing, so the API can respond gracefully.
+ * Sends a password-reset OTP through the shared mail service (templated, logged).
+ * Returns `success: false` instead of throwing, so the API can respond gracefully.
  */
 export async function sendOTPEmail({
   to,
   otp,
   expiresInMinutes,
+  name,
 }: {
   to: string
   otp: string
   expiresInMinutes: number
+  name?: string
 }): Promise<{ success: boolean; error?: string }> {
-  const transport = getTransporter()
-
-  if (!transport) {
-    return {
-      success: false,
-      error: 'SMTP not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD.',
-    }
-  }
-
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'noreply@wellfind.academy'
-  const fromName = process.env.SMTP_FROM_NAME || 'Wellfind Academic'
-
-  try {
-    await transport.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to,
-      subject: 'Your Wellfind Academic Password Reset OTP',
-      text: `Your one-time password (OTP) is ${otp}. It expires in ${expiresInMinutes} minutes. Do not share it with anyone.`,
-      html: `
-        <h2>Wellfind Academic — Password Reset OTP</h2>
-        <p>Your one-time password (OTP) is <strong>${otp}</strong>.</p>
-        <p>It expires in ${expiresInMinutes} minutes.</p>
-        <p>Do not share this code with anyone.</p>
-      `,
-    })
-    return { success: true }
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return { success: false, error: `Failed to send email: ${message}` }
-  }
+  const { sendTemplatedEmail } = await import('@/services/mailService')
+  const result = await sendTemplatedEmail({
+    template: 'password_reset_otp',
+    to,
+    toName: name,
+    data: { name: name || to.split('@')[0], otp, expiresInMinutes },
+    relatedType: 'auth',
+  })
+  return { success: result.ok, error: result.error }
 }
