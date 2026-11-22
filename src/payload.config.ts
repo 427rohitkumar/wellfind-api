@@ -28,6 +28,7 @@ import { TeacherPayouts } from './collections/TeacherPayouts'
 import { PushSubscriptions } from './collections/PushSubscriptions'
 import { Notifications } from './collections/Notifications'
 import { UserDevices } from './collections/UserDevices'
+import { DataDeletionRequests } from './collections/DataDeletionRequests'
 import { NotificationDeliveries } from './collections/NotificationDeliveries'
 import { AllocationWork } from './collections/AllocationWork'
 import { TeacherDocuments } from './collections/TeacherDocuments'
@@ -112,6 +113,7 @@ export default buildConfig({
     Notifications,
     UserDevices,
     NotificationDeliveries,
+    DataDeletionRequests,
     AllocationWork,
     TeacherDocuments,
     TeacherEnquiries,

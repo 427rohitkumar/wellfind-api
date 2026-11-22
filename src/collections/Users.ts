@@ -108,6 +108,11 @@ export const Users: CollectionConfig = {
           'Account status. Blocked and suspended accounts cannot authenticate. Blocked is admin-initiated; suspended is temporary/security-related.',
       },
     },
+    {
+      name: 'deletedAt',
+      type: 'date',
+      admin: { readOnly: true, description: 'Set when the account was deleted (data anonymised). Such accounts can never sign in again.' },
+    },
     // OTP password-reset fields (hashed, never plaintext)
     {
       name: 'otpHash',

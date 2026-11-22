@@ -84,6 +84,7 @@ export interface Config {
     notifications: Notification;
     'user-devices': UserDevice;
     'notification-deliveries': NotificationDelivery;
+    'data-deletion-requests': DataDeletionRequest;
     'allocation-work': AllocationWork;
     'teacher-documents': TeacherDocument;
     'teacher-enquiries': TeacherEnquiry;
@@ -118,6 +119,7 @@ export interface Config {
     notifications: NotificationsSelect<false> | NotificationsSelect<true>;
     'user-devices': UserDevicesSelect<false> | UserDevicesSelect<true>;
     'notification-deliveries': NotificationDeliveriesSelect<false> | NotificationDeliveriesSelect<true>;
+    'data-deletion-requests': DataDeletionRequestsSelect<false> | DataDeletionRequestsSelect<true>;
     'allocation-work': AllocationWorkSelect<false> | AllocationWorkSelect<true>;
     'teacher-documents': TeacherDocumentsSelect<false> | TeacherDocumentsSelect<true>;
     'teacher-enquiries': TeacherEnquiriesSelect<false> | TeacherEnquiriesSelect<true>;
@@ -200,6 +202,10 @@ export interface User {
    * Account status. Blocked and suspended accounts cannot authenticate. Blocked is admin-initiated; suspended is temporary/security-related.
    */
   status: 'active' | 'blocked' | 'suspended';
+  /**
+   * Set when the account was deleted (data anonymised). Such accounts can never sign in again.
+   */
+  deletedAt?: string | null;
   otpHash?: string | null;
   otpExpiresAt?: string | null;
   otpAttempts?: number | null;
@@ -1051,6 +1057,37 @@ export interface NotificationDelivery {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "data-deletion-requests".
+ */
+export interface DataDeletionRequest {
+  id: number;
+  source: 'web' | 'app';
+  requesterType: 'student_parent' | 'teacher' | 'staff' | 'other';
+  status: 'pending' | 'completed' | 'rejected' | 'failed';
+  fullName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  message?: string | null;
+  /**
+   * Counts of records anonymised or removed.
+   */
+  resultSummary?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  processedBy?: (number | null) | User;
+  processedAt?: string | null;
+  rejectionReason?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "allocation-work".
  */
 export interface AllocationWork {
@@ -1318,6 +1355,10 @@ export interface PayloadLockedDocument {
         value: number | NotificationDelivery;
       } | null)
     | ({
+        relationTo: 'data-deletion-requests';
+        value: number | DataDeletionRequest;
+      } | null)
+    | ({
         relationTo: 'allocation-work';
         value: number | AllocationWork;
       } | null)
@@ -1410,6 +1451,7 @@ export interface UsersSelect<T extends boolean = true> {
   gender?: T;
   avatar?: T;
   status?: T;
+  deletedAt?: T;
   otpHash?: T;
   otpExpiresAt?: T;
   otpAttempts?: T;
@@ -1810,6 +1852,25 @@ export interface NotificationDeliveriesSelect<T extends boolean = true> {
   attempts?: T;
   errorCode?: T;
   messageId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "data-deletion-requests_select".
+ */
+export interface DataDeletionRequestsSelect<T extends boolean = true> {
+  source?: T;
+  requesterType?: T;
+  status?: T;
+  fullName?: T;
+  email?: T;
+  phone?: T;
+  message?: T;
+  resultSummary?: T;
+  processedBy?: T;
+  processedAt?: T;
+  rejectionReason?: T;
   updatedAt?: T;
   createdAt?: T;
 }
