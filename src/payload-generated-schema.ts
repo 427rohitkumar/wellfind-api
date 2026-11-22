@@ -18,20 +18,204 @@ import {
   serial,
   numeric,
   boolean,
+  type AnyPgColumn,
   jsonb,
   pgEnum,
 } from '@payloadcms/db-postgres/drizzle/pg-core'
 import { sql, relations } from '@payloadcms/db-postgres/drizzle'
-export const enum_users_role = pgEnum('enum_users_role', ['super_admin', 'teacher'])
+export const enum_users_role = pgEnum('enum_users_role', [
+  'super_admin',
+  'operations_manager',
+  'student_counselor',
+  'teacher_coordinator',
+  'finance_manager',
+  'marketing_analyst',
+  'support_executive',
+  'teacher',
+])
+export const enum_users_gender = pgEnum('enum_users_gender', ['male', 'female', 'other'])
 export const enum_users_status = pgEnum('enum_users_status', ['active', 'blocked', 'suspended'])
+export const enum_media_kind = pgEnum('enum_media_kind', ['avatar', 'other'])
+export const enum_student_enquiries_student_gender = pgEnum(
+  'enum_student_enquiries_student_gender',
+  ['male', 'female', 'other'],
+)
+export const enum_student_enquiries_preferred_teacher_gender = pgEnum(
+  'enum_student_enquiries_preferred_teacher_gender',
+  ['male', 'female', 'any'],
+)
+export const enum_student_enquiries_enquiry_source = pgEnum(
+  'enum_student_enquiries_enquiry_source',
+  ['website', 'phone_call', 'email', 'referral', 'network', 'other'],
+)
 export const enum_student_enquiries_enquiry_status = pgEnum(
   'enum_student_enquiries_enquiry_status',
-  ['new', 'contacted', 'in_progress', 'converted', 'closed'],
+  ['new', 'contacted', 'in_progress', 'test', 'converted', 'allocated', 'closed'],
 )
+export const enum_student_enquiries_test_mode = pgEnum('enum_student_enquiries_test_mode', [
+  'physical',
+  'virtual',
+  'digital',
+])
+export const enum_students_student_gender = pgEnum('enum_students_student_gender', [
+  'male',
+  'female',
+  'other',
+])
+export const enum_students_preferred_teacher_gender = pgEnum(
+  'enum_students_preferred_teacher_gender',
+  ['male', 'female', 'any'],
+)
+export const enum_students_status = pgEnum('enum_students_status', [
+  'active',
+  'inactive',
+  'paused',
+  'completed',
+])
+export const enum_student_assessments_current_capability = pgEnum(
+  'enum_student_assessments_current_capability',
+  ['excellent', 'good', 'average', 'needs_improvement', 'weak'],
+)
+export const enum_student_tests_status = pgEnum('enum_student_tests_status', [
+  'requested',
+  'payment_pending',
+  'paid',
+  'tester_assigned',
+  'scheduled',
+  'completed',
+  'report_available',
+])
+export const enum_student_tests_payment_status = pgEnum('enum_student_tests_payment_status', [
+  'pending',
+  'paid',
+  'failed',
+  'refunded',
+])
+export const enum_student_test_payments_payment_method = pgEnum(
+  'enum_student_test_payments_payment_method',
+  ['cash', 'upi', 'card', 'bank_transfer', 'online', 'other'],
+)
+export const enum_student_test_payments_payment_status = pgEnum(
+  'enum_student_test_payments_payment_status',
+  ['pending', 'paid', 'failed', 'refunded'],
+)
+export const enum_student_test_reports_capability = pgEnum('enum_student_test_reports_capability', [
+  'excellent',
+  'good',
+  'average',
+  'needs_improvement',
+  'weak',
+])
+export const enum_student_test_report_shares_channel = pgEnum(
+  'enum_student_test_report_shares_channel',
+  ['whatsapp', 'phone_call'],
+)
+export const enum_student_test_report_shares_status = pgEnum(
+  'enum_student_test_report_shares_status',
+  ['recorded', 'sent', 'completed', 'failed', 'no_answer'],
+)
+export const enum_enquiry_tests_mode = pgEnum('enum_enquiry_tests_mode', ['physical', 'digital'])
+export const enum_enquiry_tests_status = pgEnum('enum_enquiry_tests_status', [
+  'requested',
+  'scheduled',
+  'conducted',
+  'report_ready',
+  'cancelled',
+])
+export const enum_enquiry_tests_payment_status = pgEnum('enum_enquiry_tests_payment_status', [
+  'pending',
+  'paid',
+  'waived',
+])
+export const enum_teaching_sessions_status = pgEnum('enum_teaching_sessions_status', [
+  'scheduled',
+  'taught',
+  'missed',
+  'cancelled',
+])
+export const enum_user_devices_platform = pgEnum('enum_user_devices_platform', ['android', 'ios'])
+export const enum_user_devices_environment = pgEnum('enum_user_devices_environment', [
+  'development',
+  'preview',
+  'production',
+])
+export const enum_notification_deliveries_status = pgEnum('enum_notification_deliveries_status', [
+  'sent',
+  'failed',
+  'invalid_token',
+])
+export const enum_allocation_work_kind = pgEnum('enum_allocation_work_kind', ['assignment', 'test'])
+export const enum_allocation_work_status = pgEnum('enum_allocation_work_status', [
+  'assigned',
+  'submitted',
+  'graded',
+  'missed',
+])
+export const enum_teacher_enquiries_gender = pgEnum('enum_teacher_enquiries_gender', [
+  'male',
+  'female',
+  'other',
+])
 export const enum_teacher_enquiries_application_status = pgEnum(
   'enum_teacher_enquiries_application_status',
-  ['new', 'under_review', 'shortlisted', 'approved', 'rejected'],
+  ['new', 'under_review', 'shortlisted', 'evaluation_completed', 'approved', 'rejected'],
 )
+export const enum_teacher_enquiries_teacher_availability = pgEnum(
+  'enum_teacher_enquiries_teacher_availability',
+  ['free', 'allocated'],
+)
+export const enum_teacher_enquiries_rejection_category = pgEnum(
+  'enum_teacher_enquiries_rejection_category',
+  [
+    'qualifications_mismatch',
+    'experience_insufficient',
+    'document_verification_failed',
+    'interview_demo_failed',
+    'character_conduct',
+    'other',
+  ],
+)
+export const enum_teacher_enquiries_registration_fee_status = pgEnum(
+  'enum_teacher_enquiries_registration_fee_status',
+  ['pending', 'submitted', 'paid', 'waived'],
+)
+export const enum_teacher_enquiries_registration_fee_payment_method = pgEnum(
+  'enum_teacher_enquiries_registration_fee_payment_method',
+  ['razorpay', 'upi', 'bank_transfer', 'other'],
+)
+export const enum_teacher_enquiries_credentials_email_status = pgEnum(
+  'enum_teacher_enquiries_credentials_email_status',
+  ['sent', 'failed'],
+)
+export const enum_teacher_evaluations_revision_history_previous_status = pgEnum(
+  'enum_teacher_evaluations_revision_history_previous_status',
+  ['in_progress', 'completed'],
+)
+export const enum_teacher_evaluations_revision_history_new_status = pgEnum(
+  'enum_teacher_evaluations_revision_history_new_status',
+  ['in_progress', 'completed'],
+)
+export const enum_teacher_evaluations_evaluation_status = pgEnum(
+  'enum_teacher_evaluations_evaluation_status',
+  ['in_progress', 'completed'],
+)
+export const enum_teacher_matches_match_status = pgEnum('enum_teacher_matches_match_status', [
+  'eligible',
+  'shortlisted',
+  'rejected',
+])
+export const enum_teacher_allocations_timetable_day = pgEnum(
+  'enum_teacher_allocations_timetable_day',
+  ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+)
+export const enum_teacher_allocations_status = pgEnum('enum_teacher_allocations_status', [
+  'assigned',
+  'accepted',
+  'rejected',
+  'active',
+  'completed',
+  'cancelled',
+])
 export const enum_enquiry_audit_log_enquiry_type = pgEnum('enum_enquiry_audit_log_enquiry_type', [
   'student',
   'teacher',
@@ -39,7 +223,58 @@ export const enum_enquiry_audit_log_enquiry_type = pgEnum('enum_enquiry_audit_lo
 export const enum_enquiry_audit_log_field_changed = pgEnum('enum_enquiry_audit_log_field_changed', [
   'enquiryStatus',
   'applicationStatus',
+  'evaluation',
 ])
+export const enum_teacher_profiles_gender = pgEnum('enum_teacher_profiles_gender', [
+  'male',
+  'female',
+  'other',
+])
+export const enum_teacher_profiles_availability_status = pgEnum(
+  'enum_teacher_profiles_availability_status',
+  ['free', 'allocated'],
+)
+export const enum_teacher_profiles_approval_status = pgEnum(
+  'enum_teacher_profiles_approval_status',
+  ['approved', 'pending', 'rejected'],
+)
+export const enum_teacher_profiles_registration_fee_status = pgEnum(
+  'enum_teacher_profiles_registration_fee_status',
+  ['paid', 'pending', 'failed', 'waived'],
+)
+export const enum_teacher_profiles_kyc_status = pgEnum('enum_teacher_profiles_kyc_status', [
+  'verified',
+  'under_review',
+  'pending',
+  'rejected',
+])
+export const enum_teacher_profiles_student_allocation_status = pgEnum(
+  'enum_teacher_profiles_student_allocation_status',
+  ['allocated', 'partially_allocated', 'unallocated'],
+)
+export const enum_teacher_profiles_account_status = pgEnum('enum_teacher_profiles_account_status', [
+  'active',
+  'inactive',
+  'suspended',
+])
+export const enum_email_logs_status = pgEnum('enum_email_logs_status', [
+  'queued',
+  'sent',
+  'failed',
+  'skipped',
+])
+export const enum_payments_category = pgEnum('enum_payments_category', [
+  'teacher_registration',
+  'tuition_fee',
+  'other',
+])
+export const enum_payments_status = pgEnum('enum_payments_status', [
+  'created',
+  'paid',
+  'failed',
+  'refunded',
+])
+export const enum_payments_mode = pgEnum('enum_payments_mode', ['test', 'live'])
 
 export const users_sessions = pgTable(
   'users_sessions',
@@ -70,6 +305,10 @@ export const users = pgTable(
   {
     id: serial('id').primaryKey(),
     role: enum_users_role('role').notNull().default('teacher'),
+    fullName: varchar('full_name'),
+    phone: varchar('phone'),
+    gender: enum_users_gender('gender'),
+    avatar: varchar('avatar'),
     status: enum_users_status('status').notNull().default('active'),
     otpHash: varchar('otp_hash'),
     otpExpiresAt: timestamp('otp_expires_at', { mode: 'string', withTimezone: true, precision: 3 }),
@@ -121,6 +360,12 @@ export const media = pgTable(
   {
     id: serial('id').primaryKey(),
     alt: varchar('alt').notNull(),
+    kind: enum_media_kind('kind').default('other'),
+    owner: integer('owner_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    prefix: varchar('prefix').default('wellfind/media'),
+    _objectKey: varchar('_objectkey'),
     updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
       .defaultNow()
       .notNull(),
@@ -138,9 +383,47 @@ export const media = pgTable(
     focalY: numeric('focal_y', { mode: 'number' }),
   },
   (columns) => [
+    index('media_owner_idx').on(columns.owner),
     index('media_updated_at_idx').on(columns.updatedAt),
     index('media_created_at_idx').on(columns.createdAt),
     uniqueIndex('media_filename_idx').on(columns.filename),
+  ],
+)
+
+export const user_files = pgTable(
+  'user_files',
+  {
+    id: serial('id').primaryKey(),
+    owner: integer('owner_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    label: varchar('label'),
+    category: varchar('category'),
+    prefix: varchar('prefix').default('wellfind/user-files'),
+    _objectKey: varchar('_objectkey'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    url: varchar('url'),
+    thumbnailURL: varchar('thumbnail_u_r_l'),
+    filename: varchar('filename'),
+    mimeType: varchar('mime_type'),
+    filesize: numeric('filesize', { mode: 'number' }),
+    width: numeric('width', { mode: 'number' }),
+    height: numeric('height', { mode: 'number' }),
+    focalX: numeric('focal_x', { mode: 'number' }),
+    focalY: numeric('focal_y', { mode: 'number' }),
+  },
+  (columns) => [
+    index('user_files_owner_idx').on(columns.owner),
+    index('user_files_updated_at_idx').on(columns.updatedAt),
+    index('user_files_created_at_idx').on(columns.createdAt),
+    uniqueIndex('user_files_filename_idx').on(columns.filename),
   ],
 )
 
@@ -172,14 +455,92 @@ export const student_enquiries = pgTable(
     preferredTiming: varchar('preferred_timing').notNull(),
     locality: varchar('locality').notNull(),
     customLocality: varchar('custom_locality'),
+    studentGender: enum_student_enquiries_student_gender('student_gender'),
+    preferredTeacherGender: enum_student_enquiries_preferred_teacher_gender(
+      'preferred_teacher_gender',
+    ),
     budgetRange: varchar('budget_range').notNull(),
     name: varchar('name').notNull(),
     phoneNumber: varchar('phone_number').notNull(),
+    enquirySource: enum_student_enquiries_enquiry_source('enquiry_source').default('website'),
     additionalNotes: varchar('additional_notes'),
     agreedToPolicy: boolean('agreed_to_policy').notNull().default(false),
+    markAsRead: boolean('mark_as_read').default(false),
     enquiryStatus: enum_student_enquiries_enquiry_status('enquiry_status').default('new'),
     adminNotes: varchar('admin_notes'),
     assignedTo: integer('assigned_to_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    testMode: enum_student_enquiries_test_mode('test_mode'),
+    testScheduledAt: timestamp('test_scheduled_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    testVenue: varchar('test_venue'),
+    testNotes: varchar('test_notes'),
+    changeReason: varchar('change_reason'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('student_enquiries_phone_number_idx').on(columns.phoneNumber),
+    index('student_enquiries_enquiry_source_idx').on(columns.enquirySource),
+    index('student_enquiries_enquiry_status_idx').on(columns.enquiryStatus),
+    index('student_enquiries_assigned_to_idx').on(columns.assignedTo),
+    index('student_enquiries_test_scheduled_at_idx').on(columns.testScheduledAt),
+    index('student_enquiries_updated_at_idx').on(columns.updatedAt),
+    index('student_enquiries_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const students_subjects = pgTable(
+  'students_subjects',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    subject: varchar('subject').notNull(),
+  },
+  (columns) => [
+    index('students_subjects_order_idx').on(columns._order),
+    index('students_subjects_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [students.id],
+      name: 'students_subjects_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const students = pgTable(
+  'students',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name').notNull(),
+    parentName: varchar('parent_name'),
+    phoneNumber: varchar('phone_number').notNull(),
+    alternatePhoneNumber: varchar('alternate_phone_number'),
+    parentEmail: varchar('parent_email'),
+    studentClass: varchar('student_class').notNull(),
+    customSubject: varchar('custom_subject'),
+    locality: varchar('locality').notNull(),
+    customLocality: varchar('custom_locality'),
+    preferredTiming: varchar('preferred_timing').notNull(),
+    studentGender: enum_students_student_gender('student_gender'),
+    preferredTeacherGender: enum_students_preferred_teacher_gender('preferred_teacher_gender'),
+    budgetRange: varchar('budget_range'),
+    learningNotes: varchar('learning_notes'),
+    studentEnquiry: integer('student_enquiry_id').references(() => student_enquiries.id, {
+      onDelete: 'set null',
+    }),
+    status: enum_students_status('status').notNull().default('active'),
+    convertedAt: timestamp('converted_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    convertedBy: integer('converted_by_id').references(() => users.id, {
       onDelete: 'set null',
     }),
     updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
@@ -190,9 +551,660 @@ export const student_enquiries = pgTable(
       .notNull(),
   },
   (columns) => [
-    index('student_enquiries_assigned_to_idx').on(columns.assignedTo),
-    index('student_enquiries_updated_at_idx').on(columns.updatedAt),
-    index('student_enquiries_created_at_idx').on(columns.createdAt),
+    index('students_name_idx').on(columns.name),
+    index('students_phone_number_idx').on(columns.phoneNumber),
+    index('students_student_class_idx').on(columns.studentClass),
+    index('students_locality_idx').on(columns.locality),
+    uniqueIndex('students_student_enquiry_idx').on(columns.studentEnquiry),
+    index('students_status_idx').on(columns.status),
+    index('students_converted_by_idx').on(columns.convertedBy),
+    index('students_updated_at_idx').on(columns.updatedAt),
+    index('students_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const student_assessments_strengths = pgTable(
+  'student_assessments_strengths',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    item: varchar('item').notNull(),
+  },
+  (columns) => [
+    index('student_assessments_strengths_order_idx').on(columns._order),
+    index('student_assessments_strengths_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [student_assessments.id],
+      name: 'student_assessments_strengths_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const student_assessments_weaknesses = pgTable(
+  'student_assessments_weaknesses',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    item: varchar('item').notNull(),
+  },
+  (columns) => [
+    index('student_assessments_weaknesses_order_idx').on(columns._order),
+    index('student_assessments_weaknesses_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [student_assessments.id],
+      name: 'student_assessments_weaknesses_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const student_assessments = pgTable(
+  'student_assessments',
+  {
+    id: serial('id').primaryKey(),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    assessmentType: varchar('assessment_type').notNull().default('initial_review'),
+    previousPerformance_summary: varchar('previous_performance_summary').notNull(),
+    previousPerformance_details: varchar('previous_performance_details'),
+    currentCapability: enum_student_assessments_current_capability('current_capability').notNull(),
+    adminNotes: varchar('admin_notes'),
+    assessedBy: integer('assessed_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    assessedAt: timestamp('assessed_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('student_assessments_student_idx').on(columns.student),
+    index('student_assessments_assessment_type_idx').on(columns.assessmentType),
+    index('student_assessments_current_capability_idx').on(columns.currentCapability),
+    index('student_assessments_assessed_by_idx').on(columns.assessedBy),
+    index('student_assessments_assessed_at_idx').on(columns.assessedAt),
+    index('student_assessments_updated_at_idx').on(columns.updatedAt),
+    index('student_assessments_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const student_tests_assignment_history = pgTable(
+  'student_tests_assignment_history',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    tester: integer('tester_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    assignedBy: integer('assigned_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    assignedAt: timestamp('assigned_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    scheduledAt: timestamp('scheduled_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    notes: varchar('notes'),
+  },
+  (columns) => [
+    index('student_tests_assignment_history_order_idx').on(columns._order),
+    index('student_tests_assignment_history_parent_id_idx').on(columns._parentID),
+    index('student_tests_assignment_history_tester_idx').on(columns.tester),
+    index('student_tests_assignment_history_assigned_by_idx').on(columns.assignedBy),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [student_tests.id],
+      name: 'student_tests_assignment_history_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const student_tests = pgTable(
+  'student_tests',
+  {
+    id: serial('id').primaryKey(),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    parentSelected: boolean('parent_selected').notNull().default(true),
+    testType: varchar('test_type').notNull().default('physical_assessment'),
+    feeAmount: numeric('fee_amount', { mode: 'number' }).notNull().default(100),
+    currency: varchar('currency').notNull().default('INR'),
+    location: varchar('location').notNull(),
+    scheduledAt: timestamp('scheduled_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    status: enum_student_tests_status('status').notNull().default('payment_pending'),
+    paymentStatus: enum_student_tests_payment_status('payment_status').notNull().default('pending'),
+    assignedTester: integer('assigned_tester_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    assignedBy: integer('assigned_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    assignedAt: timestamp('assigned_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    completedAt: timestamp('completed_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    notes: varchar('notes'),
+    createdBy: integer('created_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('student_tests_student_idx').on(columns.student),
+    index('student_tests_scheduled_at_idx').on(columns.scheduledAt),
+    index('student_tests_status_idx').on(columns.status),
+    index('student_tests_payment_status_idx').on(columns.paymentStatus),
+    index('student_tests_assigned_tester_idx').on(columns.assignedTester),
+    index('student_tests_assigned_by_idx').on(columns.assignedBy),
+    index('student_tests_created_by_idx').on(columns.createdBy),
+    index('student_tests_updated_at_idx').on(columns.updatedAt),
+    index('student_tests_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const student_test_payments = pgTable(
+  'student_test_payments',
+  {
+    id: serial('id').primaryKey(),
+    studentTest: integer('student_test_id')
+      .notNull()
+      .references(() => student_tests.id, {
+        onDelete: 'set null',
+      }),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    amount: numeric('amount', { mode: 'number' }).notNull().default(100),
+    currency: varchar('currency').notNull().default('INR'),
+    paymentMethod: enum_student_test_payments_payment_method('payment_method').notNull(),
+    paymentStatus: enum_student_test_payments_payment_status('payment_status').notNull(),
+    transactionReference: varchar('transaction_reference').notNull(),
+    successfulPaymentKey: varchar('successful_payment_key'),
+    recordedBy: integer('recorded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    paidAt: timestamp('paid_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    notes: varchar('notes'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('student_test_payments_student_test_idx').on(columns.studentTest),
+    index('student_test_payments_student_idx').on(columns.student),
+    index('student_test_payments_payment_status_idx').on(columns.paymentStatus),
+    uniqueIndex('student_test_payments_successful_payment_key_idx').on(
+      columns.successfulPaymentKey,
+    ),
+    index('student_test_payments_recorded_by_idx').on(columns.recordedBy),
+    index('student_test_payments_updated_at_idx').on(columns.updatedAt),
+    index('student_test_payments_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const student_test_reports_subject_results = pgTable(
+  'student_test_reports_subject_results',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    subject: varchar('subject').notNull(),
+    marksObtained: numeric('marks_obtained', { mode: 'number' }).notNull(),
+    totalMarks: numeric('total_marks', { mode: 'number' }).notNull(),
+  },
+  (columns) => [
+    index('student_test_reports_subject_results_order_idx').on(columns._order),
+    index('student_test_reports_subject_results_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [student_test_reports.id],
+      name: 'student_test_reports_subject_results_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const student_test_reports = pgTable(
+  'student_test_reports',
+  {
+    id: serial('id').primaryKey(),
+    studentTest: integer('student_test_id')
+      .notNull()
+      .references(() => student_tests.id, {
+        onDelete: 'set null',
+      }),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    marksObtained: numeric('marks_obtained', { mode: 'number' }).notNull(),
+    totalMarks: numeric('total_marks', { mode: 'number' }).notNull(),
+    capability: enum_student_test_reports_capability('capability').notNull(),
+    remarks: varchar('remarks'),
+    submittedBy: integer('submitted_by_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    submittedAt: timestamp('submitted_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex('student_test_reports_student_test_idx').on(columns.studentTest),
+    index('student_test_reports_student_idx').on(columns.student),
+    index('student_test_reports_submitted_by_idx').on(columns.submittedBy),
+    index('student_test_reports_submitted_at_idx').on(columns.submittedAt),
+    index('student_test_reports_updated_at_idx').on(columns.updatedAt),
+    index('student_test_reports_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const student_test_report_shares = pgTable(
+  'student_test_report_shares',
+  {
+    id: serial('id').primaryKey(),
+    studentTest: integer('student_test_id')
+      .notNull()
+      .references(() => student_tests.id, {
+        onDelete: 'set null',
+      }),
+    report: integer('report_id')
+      .notNull()
+      .references(() => student_test_reports.id, {
+        onDelete: 'set null',
+      }),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    channel: enum_student_test_report_shares_channel('channel').notNull(),
+    recipient: varchar('recipient').notNull(),
+    status: enum_student_test_report_shares_status('status').notNull().default('recorded'),
+    externalDeliveryConfirmed: boolean('external_delivery_confirmed').notNull().default(false),
+    providerIntegrated: boolean('provider_integrated').notNull().default(false),
+    notes: varchar('notes'),
+    sharedBy: integer('shared_by_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    sharedAt: timestamp('shared_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('student_test_report_shares_student_test_idx').on(columns.studentTest),
+    index('student_test_report_shares_report_idx').on(columns.report),
+    index('student_test_report_shares_student_idx').on(columns.student),
+    index('student_test_report_shares_shared_by_idx').on(columns.sharedBy),
+    index('student_test_report_shares_shared_at_idx').on(columns.sharedAt),
+    index('student_test_report_shares_updated_at_idx').on(columns.updatedAt),
+    index('student_test_report_shares_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const enquiry_tests_history = pgTable(
+  'enquiry_tests_history',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    type: varchar('type').notNull(),
+    at: timestamp('at', { mode: 'string', withTimezone: true, precision: 3 }),
+    by: integer('by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    note: varchar('note'),
+  },
+  (columns) => [
+    index('enquiry_tests_history_order_idx').on(columns._order),
+    index('enquiry_tests_history_parent_id_idx').on(columns._parentID),
+    index('enquiry_tests_history_by_idx').on(columns.by),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [enquiry_tests.id],
+      name: 'enquiry_tests_history_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const enquiry_tests = pgTable(
+  'enquiry_tests',
+  {
+    id: serial('id').primaryKey(),
+    studentEnquiry: integer('student_enquiry_id')
+      .notNull()
+      .references(() => student_enquiries.id, {
+        onDelete: 'set null',
+      }),
+    mode: enum_enquiry_tests_mode('mode').notNull(),
+    fee: numeric('fee', { mode: 'number' }).notNull(),
+    status: enum_enquiry_tests_status('status').notNull().default('requested'),
+    payment_status: enum_enquiry_tests_payment_status('payment_status').default('pending'),
+    payment_paidAt: timestamp('payment_paid_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    payment_reference: varchar('payment_reference'),
+    payment_note: varchar('payment_note'),
+    tester: integer('tester_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    scheduledAt: timestamp('scheduled_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    venue: varchar('venue'),
+    schedulingNote: varchar('scheduling_note'),
+    conductedAt: timestamp('conducted_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    report_iqScore: numeric('report_iq_score', { mode: 'number' }),
+    report_creativityScore: numeric('report_creativity_score', { mode: 'number' }),
+    report_academicScore: numeric('report_academic_score', { mode: 'number' }),
+    report_strengths: varchar('report_strengths'),
+    report_improvementAreas: varchar('report_improvement_areas'),
+    report_recommendation: varchar('report_recommendation'),
+    report_hoursPerWeek: numeric('report_hours_per_week', { mode: 'number' }),
+    report_testerNotes: varchar('report_tester_notes'),
+    report_reportedAt: timestamp('report_reported_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    createdBy: integer('created_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('enquiry_tests_student_enquiry_idx').on(columns.studentEnquiry),
+    index('enquiry_tests_mode_idx').on(columns.mode),
+    index('enquiry_tests_status_idx').on(columns.status),
+    index('enquiry_tests_tester_idx').on(columns.tester),
+    index('enquiry_tests_scheduled_at_idx').on(columns.scheduledAt),
+    index('enquiry_tests_created_by_idx').on(columns.createdBy),
+    index('enquiry_tests_updated_at_idx').on(columns.updatedAt),
+    index('enquiry_tests_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const teaching_sessions = pgTable(
+  'teaching_sessions',
+  {
+    id: serial('id').primaryKey(),
+    allocation: integer('allocation_id')
+      .notNull()
+      .references(() => teacher_allocations.id, {
+        onDelete: 'set null',
+      }),
+    day: varchar('day').notNull(),
+    startTime: varchar('start_time').notNull(),
+    endTime: varchar('end_time').notNull(),
+    status: enum_teaching_sessions_status('status').notNull().default('scheduled'),
+    topic: varchar('topic'),
+    notes: varchar('notes'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('teaching_sessions_allocation_idx').on(columns.allocation),
+    index('teaching_sessions_day_idx').on(columns.day),
+    index('teaching_sessions_status_idx').on(columns.status),
+    index('teaching_sessions_updated_at_idx').on(columns.updatedAt),
+    index('teaching_sessions_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const teacher_payouts = pgTable(
+  'teacher_payouts',
+  {
+    id: serial('id').primaryKey(),
+    allocation: integer('allocation_id')
+      .notNull()
+      .references(() => teacher_allocations.id, {
+        onDelete: 'set null',
+      }),
+    teacher: integer('teacher_id')
+      .notNull()
+      .references(() => teacher_profiles.id, {
+        onDelete: 'set null',
+      }),
+    month: varchar('month').notNull(),
+    amount: numeric('amount', { mode: 'number' }).notNull(),
+    paidAt: timestamp('paid_at', { mode: 'string', withTimezone: true, precision: 3 }).notNull(),
+    reference: varchar('reference'),
+    note: varchar('note'),
+    recordedBy: integer('recorded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('teacher_payouts_allocation_idx').on(columns.allocation),
+    index('teacher_payouts_teacher_idx').on(columns.teacher),
+    index('teacher_payouts_month_idx').on(columns.month),
+    index('teacher_payouts_recorded_by_idx').on(columns.recordedBy),
+    index('teacher_payouts_updated_at_idx').on(columns.updatedAt),
+    index('teacher_payouts_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const push_subscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: serial('id').primaryKey(),
+    user: integer('user_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    endpoint: varchar('endpoint').notNull(),
+    p256dh: varchar('p256dh').notNull(),
+    auth: varchar('auth').notNull(),
+    userAgent: varchar('user_agent'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('push_subscriptions_user_idx').on(columns.user),
+    uniqueIndex('push_subscriptions_endpoint_idx').on(columns.endpoint),
+    index('push_subscriptions_updated_at_idx').on(columns.updatedAt),
+    index('push_subscriptions_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: serial('id').primaryKey(),
+    user: integer('user_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    type: varchar('type').notNull(),
+    title: varchar('title').notNull(),
+    body: varchar('body').notNull(),
+    entityType: varchar('entity_type'),
+    entityId: varchar('entity_id'),
+    screen: varchar('screen'),
+    readAt: timestamp('read_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    dedupeKey: varchar('dedupe_key'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('notifications_user_idx').on(columns.user),
+    index('notifications_type_idx').on(columns.type),
+    uniqueIndex('notifications_dedupe_key_idx').on(columns.dedupeKey),
+    index('notifications_updated_at_idx').on(columns.updatedAt),
+    index('notifications_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const user_devices = pgTable(
+  'user_devices',
+  {
+    id: serial('id').primaryKey(),
+    user: integer('user_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    fcmToken: varchar('fcm_token').notNull(),
+    platform: enum_user_devices_platform('platform').notNull().default('android'),
+    environment: enum_user_devices_environment('environment').notNull(),
+    active: boolean('active').default(true),
+    lastSeen: timestamp('last_seen', { mode: 'string', withTimezone: true, precision: 3 }),
+    appVersion: varchar('app_version'),
+    deviceName: varchar('device_name'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('user_devices_user_idx').on(columns.user),
+    uniqueIndex('user_devices_fcm_token_idx').on(columns.fcmToken),
+    index('user_devices_environment_idx').on(columns.environment),
+    index('user_devices_active_idx').on(columns.active),
+    index('user_devices_updated_at_idx').on(columns.updatedAt),
+    index('user_devices_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const notification_deliveries = pgTable(
+  'notification_deliveries',
+  {
+    id: serial('id').primaryKey(),
+    notification: integer('notification_id')
+      .notNull()
+      .references(() => notifications.id, {
+        onDelete: 'set null',
+      }),
+    device: integer('device_id')
+      .notNull()
+      .references(() => user_devices.id, {
+        onDelete: 'set null',
+      }),
+    status: enum_notification_deliveries_status('status').notNull(),
+    attempts: numeric('attempts', { mode: 'number' }).default(1),
+    errorCode: varchar('error_code'),
+    messageId: varchar('message_id'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('notification_deliveries_notification_idx').on(columns.notification),
+    index('notification_deliveries_device_idx').on(columns.device),
+    index('notification_deliveries_status_idx').on(columns.status),
+    index('notification_deliveries_updated_at_idx').on(columns.updatedAt),
+    index('notification_deliveries_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const allocation_work = pgTable(
+  'allocation_work',
+  {
+    id: serial('id').primaryKey(),
+    allocation: integer('allocation_id')
+      .notNull()
+      .references(() => teacher_allocations.id, {
+        onDelete: 'set null',
+      }),
+    kind: enum_allocation_work_kind('kind').notNull().default('assignment'),
+    title: varchar('title').notNull(),
+    description: varchar('description'),
+    dueDate: varchar('due_date'),
+    status: enum_allocation_work_status('status').notNull().default('assigned'),
+    marks: numeric('marks', { mode: 'number' }),
+    maxMarks: numeric('max_marks', { mode: 'number' }),
+    feedback: varchar('feedback'),
+    submittedAt: timestamp('submitted_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    gradedAt: timestamp('graded_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('allocation_work_allocation_idx').on(columns.allocation),
+    index('allocation_work_status_idx').on(columns.status),
+    index('allocation_work_updated_at_idx').on(columns.updatedAt),
+    index('allocation_work_created_at_idx').on(columns.createdAt),
   ],
 )
 
@@ -200,7 +1212,12 @@ export const teacher_documents = pgTable(
   'teacher_documents',
   {
     id: serial('id').primaryKey(),
+    owner: integer('owner_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     alt: varchar('alt').notNull(),
+    prefix: varchar('prefix').default('wellfind/kyc'),
+    _objectKey: varchar('_objectkey'),
     updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
       .defaultNow()
       .notNull(),
@@ -218,6 +1235,7 @@ export const teacher_documents = pgTable(
     focalY: numeric('focal_y', { mode: 'number' }),
   },
   (columns) => [
+    index('teacher_documents_owner_idx').on(columns.owner),
     index('teacher_documents_updated_at_idx').on(columns.updatedAt),
     index('teacher_documents_created_at_idx').on(columns.createdAt),
     uniqueIndex('teacher_documents_filename_idx').on(columns.filename),
@@ -231,6 +1249,7 @@ export const teacher_enquiries = pgTable(
     fullName: varchar('full_name').notNull(),
     mobileNumber: varchar('mobile_number').notNull(),
     email: varchar('email'),
+    gender: enum_teacher_enquiries_gender('gender'),
     highestQualification: varchar('highest_qualification').notNull(),
     teachingExperience: varchar('teaching_experience').notNull(),
     primarySubject: varchar('primary_subject').notNull(),
@@ -248,6 +1267,7 @@ export const teacher_enquiries = pgTable(
         onDelete: 'set null',
       },
     ),
+    markAsRead: boolean('mark_as_read').default(false),
     applicationStatus:
       enum_teacher_enquiries_application_status('application_status').default('new'),
     adminNotes: varchar('admin_notes'),
@@ -255,6 +1275,50 @@ export const teacher_enquiries = pgTable(
       onDelete: 'set null',
     }),
     reviewedAt: timestamp('reviewed_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    teacherAvailability:
+      enum_teacher_enquiries_teacher_availability('teacher_availability').default('free'),
+    rejectionCategory: enum_teacher_enquiries_rejection_category('rejection_category'),
+    changeReason: varchar('change_reason'),
+    registrationFee_status:
+      enum_teacher_enquiries_registration_fee_status('registration_fee_status').default('pending'),
+    registrationFee_amount: numeric('registration_fee_amount', { mode: 'number' }).default(1000),
+    registrationFee_paymentDate: timestamp('registration_fee_payment_date', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    registrationFee_paymentMethod: enum_teacher_enquiries_registration_fee_payment_method(
+      'registration_fee_payment_method',
+    ),
+    registrationFee_submittedAt: timestamp('registration_fee_submitted_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    registrationFee_expiresAt: timestamp('registration_fee_expires_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    registrationFee_transactionRef: varchar('registration_fee_transaction_ref'),
+    registrationFee_notes: varchar('registration_fee_notes'),
+    teacherUser: integer('teacher_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    accountCreatedAt: timestamp('account_created_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    credentialsEmailStatus: enum_teacher_enquiries_credentials_email_status(
+      'credentials_email_status',
+    ),
+    teacherProfile: integer('teacher_profile_id').references(
+      (): AnyPgColumn => teacher_profiles.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
     updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
       .defaultNow()
       .notNull(),
@@ -266,8 +1330,272 @@ export const teacher_enquiries = pgTable(
     index('teacher_enquiries_aadhaar_document_idx').on(columns.aadhaarDocument),
     index('teacher_enquiries_qualification_document_idx').on(columns.qualificationDocument),
     index('teacher_enquiries_reviewed_by_idx').on(columns.reviewedBy),
+    index('teacher_enquiries_teacher_user_idx').on(columns.teacherUser),
+    index('teacher_enquiries_teacher_profile_idx').on(columns.teacherProfile),
     index('teacher_enquiries_updated_at_idx').on(columns.updatedAt),
     index('teacher_enquiries_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const teacher_evaluations_revision_history = pgTable(
+  'teacher_evaluations_revision_history',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    revisionNumber: numeric('revision_number', { mode: 'number' }).notNull(),
+    previousStatus:
+      enum_teacher_evaluations_revision_history_previous_status('previous_status').notNull(),
+    newStatus: enum_teacher_evaluations_revision_history_new_status('new_status').notNull(),
+    previousWrittenTest: jsonb('previous_written_test'),
+    previousInterview: jsonb('previous_interview'),
+    previousAppliedWeights: jsonb('previous_applied_weights'),
+    previousQualityScore: numeric('previous_quality_score', { mode: 'number' }),
+    newQualityScore: numeric('new_quality_score', { mode: 'number' }),
+    changeReason: varchar('change_reason'),
+    changedBy: integer('changed_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    changedAt: timestamp('changed_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+  },
+  (columns) => [
+    index('teacher_evaluations_revision_history_order_idx').on(columns._order),
+    index('teacher_evaluations_revision_history_parent_id_idx').on(columns._parentID),
+    index('teacher_evaluations_revision_history_changed_by_idx').on(columns.changedBy),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [teacher_evaluations.id],
+      name: 'teacher_evaluations_revision_history_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const teacher_evaluations = pgTable(
+  'teacher_evaluations',
+  {
+    id: serial('id').primaryKey(),
+    teacherEnquiry: integer('teacher_enquiry_id')
+      .notNull()
+      .references((): AnyPgColumn => teacher_enquiries.id, {
+        onDelete: 'set null',
+      }),
+    attemptNumber: numeric('attempt_number', { mode: 'number' }).notNull().default(1),
+    evaluationStatus: enum_teacher_evaluations_evaluation_status('evaluation_status')
+      .notNull()
+      .default('in_progress'),
+    writtenTest_isRecorded: boolean('written_test_is_recorded').default(false),
+    writtenTest_marksObtained: numeric('written_test_marks_obtained', { mode: 'number' }),
+    writtenTest_totalMarks: numeric('written_test_total_marks', { mode: 'number' }),
+    writtenTest_percentage: numeric('written_test_percentage', { mode: 'number' }),
+    writtenTest_remarks: varchar('written_test_remarks'),
+    writtenTest_recordedBy: integer('written_test_recorded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    writtenTest_recordedAt: timestamp('written_test_recorded_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    interview_isRecorded: boolean('interview_is_recorded').default(false),
+    interview_marksObtained: numeric('interview_marks_obtained', { mode: 'number' }),
+    interview_totalMarks: numeric('interview_total_marks', { mode: 'number' }),
+    interview_percentage: numeric('interview_percentage', { mode: 'number' }),
+    interview_remarks: varchar('interview_remarks'),
+    interview_recordedBy: integer('interview_recorded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    interview_recordedAt: timestamp('interview_recorded_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    appliedWeights_writtenTestWeight: numeric('applied_weights_written_test_weight', {
+      mode: 'number',
+    }),
+    appliedWeights_interviewWeight: numeric('applied_weights_interview_weight', { mode: 'number' }),
+    qualityScore: numeric('quality_score', { mode: 'number' }),
+    overallRemarks: varchar('overall_remarks'),
+    evaluator: integer('evaluator_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    evaluatedAt: timestamp('evaluated_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    completedAt: timestamp('completed_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    lastUpdatedBy: integer('last_updated_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    lastUpdatedAt: timestamp('last_updated_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('teacher_evaluations_teacher_enquiry_idx').on(columns.teacherEnquiry),
+    index('teacher_evaluations_evaluation_status_idx').on(columns.evaluationStatus),
+    index('teacher_evaluations_written_test_written_test_recorded_b_idx').on(
+      columns.writtenTest_recordedBy,
+    ),
+    index('teacher_evaluations_interview_interview_recorded_by_idx').on(
+      columns.interview_recordedBy,
+    ),
+    index('teacher_evaluations_quality_score_idx').on(columns.qualityScore),
+    index('teacher_evaluations_evaluator_idx').on(columns.evaluator),
+    index('teacher_evaluations_evaluated_at_idx').on(columns.evaluatedAt),
+    index('teacher_evaluations_completed_at_idx').on(columns.completedAt),
+    index('teacher_evaluations_last_updated_by_idx').on(columns.lastUpdatedBy),
+    index('teacher_evaluations_updated_at_idx').on(columns.updatedAt),
+    index('teacher_evaluations_created_at_idx').on(columns.createdAt),
+    uniqueIndex('teacherEnquiry_attemptNumber_idx').on(
+      columns.teacherEnquiry,
+      columns.attemptNumber,
+    ),
+  ],
+)
+
+export const teacher_matches = pgTable(
+  'teacher_matches',
+  {
+    id: serial('id').primaryKey(),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    teacher: integer('teacher_id')
+      .notNull()
+      .references(() => teacher_profiles.id, {
+        onDelete: 'set null',
+      }),
+    matchStatus: enum_teacher_matches_match_status('match_status').notNull(),
+    criteriaSnapshot: jsonb('criteria_snapshot').notNull(),
+    qualityScore: numeric('quality_score', { mode: 'number' }),
+    adminNotes: varchar('admin_notes'),
+    createdBy: integer('created_by_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('teacher_matches_student_idx').on(columns.student),
+    index('teacher_matches_teacher_idx').on(columns.teacher),
+    index('teacher_matches_match_status_idx').on(columns.matchStatus),
+    index('teacher_matches_created_by_idx').on(columns.createdBy),
+    index('teacher_matches_updated_at_idx').on(columns.updatedAt),
+    index('teacher_matches_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const teacher_allocations_timetable = pgTable(
+  'teacher_allocations_timetable',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    day: enum_teacher_allocations_timetable_day('day').notNull(),
+    startTime: varchar('start_time').notNull(),
+    endTime: varchar('end_time').notNull(),
+  },
+  (columns) => [
+    index('teacher_allocations_timetable_order_idx').on(columns._order),
+    index('teacher_allocations_timetable_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [teacher_allocations.id],
+      name: 'teacher_allocations_timetable_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const teacher_allocations_status_history = pgTable(
+  'teacher_allocations_status_history',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    fromStatus: varchar('from_status'),
+    toStatus: varchar('to_status').notNull(),
+    reason: varchar('reason'),
+    changedBy: integer('changed_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    changedAt: timestamp('changed_at', { mode: 'string', withTimezone: true, precision: 3 }),
+  },
+  (columns) => [
+    index('teacher_allocations_status_history_order_idx').on(columns._order),
+    index('teacher_allocations_status_history_parent_id_idx').on(columns._parentID),
+    index('teacher_allocations_status_history_changed_by_idx').on(columns.changedBy),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [teacher_allocations.id],
+      name: 'teacher_allocations_status_history_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const teacher_allocations = pgTable(
+  'teacher_allocations',
+  {
+    id: serial('id').primaryKey(),
+    student: integer('student_id')
+      .notNull()
+      .references(() => students.id, {
+        onDelete: 'set null',
+      }),
+    teacher: integer('teacher_id')
+      .notNull()
+      .references(() => teacher_profiles.id, {
+        onDelete: 'set null',
+      }),
+    subject: varchar('subject').notNull(),
+    status: enum_teacher_allocations_status('status').notNull().default('assigned'),
+    allocationNotes: varchar('allocation_notes'),
+    monthlyFee: numeric('monthly_fee', { mode: 'number' }),
+    commissionPercent: numeric('commission_percent', { mode: 'number' }),
+    commissionAmount: numeric('commission_amount', { mode: 'number' }),
+    teacherPayout: numeric('teacher_payout', { mode: 'number' }),
+    allocatedBy: integer('allocated_by_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'set null',
+      }),
+    allocatedAt: timestamp('allocated_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    activeKey: varchar('active_key'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('teacher_allocations_student_idx').on(columns.student),
+    index('teacher_allocations_teacher_idx').on(columns.teacher),
+    index('teacher_allocations_status_idx').on(columns.status),
+    index('teacher_allocations_allocated_by_idx').on(columns.allocatedBy),
+    uniqueIndex('teacher_allocations_active_key_idx').on(columns.activeKey),
+    index('teacher_allocations_updated_at_idx').on(columns.updatedAt),
+    index('teacher_allocations_created_at_idx').on(columns.createdAt),
   ],
 )
 
@@ -305,6 +1633,216 @@ export const enquiry_audit_log = pgTable(
     index('enquiry_audit_log_changed_at_idx').on(columns.changedAt),
     index('enquiry_audit_log_updated_at_idx').on(columns.updatedAt),
     index('enquiry_audit_log_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const teacher_profiles = pgTable(
+  'teacher_profiles',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name').notNull(),
+    email: varchar('email'),
+    mobile: varchar('mobile').notNull(),
+    gender: enum_teacher_profiles_gender('gender'),
+    avatar: varchar('avatar'),
+    primarySubject: varchar('primary_subject').notNull(),
+    qualification: varchar('qualification').notNull(),
+    experienceYears: numeric('experience_years', { mode: 'number' }).default(0),
+    classLevels: varchar('class_levels'),
+    locality: varchar('locality'),
+    availability: varchar('availability'),
+    about: varchar('about'),
+    applicantNotes: varchar('applicant_notes'),
+    teacherEnquiry: integer('teacher_enquiry_id')
+      .notNull()
+      .references((): AnyPgColumn => teacher_enquiries.id, {
+        onDelete: 'set null',
+      }),
+    user: integer('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    evaluation: integer('evaluation_id').references((): AnyPgColumn => teacher_evaluations.id, {
+      onDelete: 'set null',
+    }),
+    evaluationScore: numeric('evaluation_score', { mode: 'number' }),
+    availabilityStatus:
+      enum_teacher_profiles_availability_status('availability_status').default('free'),
+    approvedBy: integer('approved_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    approvedAt: timestamp('approved_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    approvalStatus: enum_teacher_profiles_approval_status('approval_status')
+      .notNull()
+      .default('approved'),
+    registrationFee_status:
+      enum_teacher_profiles_registration_fee_status('registration_fee_status').default('pending'),
+    registrationFee_amount: numeric('registration_fee_amount', { mode: 'number' }).default(1000),
+    registrationFee_currency: varchar('registration_fee_currency').default('INR'),
+    registrationFee_year: varchar('registration_fee_year').default('2026–2027'),
+    registrationFee_paymentDate: varchar('registration_fee_payment_date').default('Pending'),
+    registrationFee_expiresAt: timestamp('registration_fee_expires_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    registrationFee_transactionRef: varchar('registration_fee_transaction_ref').default('None'),
+    kyc_status: enum_teacher_profiles_kyc_status('kyc_status').default('verified'),
+    kyc_aadhaarStatus: varchar('kyc_aadhaar_status'),
+    kyc_qualificationStatus: varchar('kyc_qualification_status'),
+    kyc_aadhaarDocument: integer('kyc_aadhaar_document_id').references(() => teacher_documents.id, {
+      onDelete: 'set null',
+    }),
+    kyc_qualificationDocument: integer('kyc_qualification_document_id').references(
+      () => teacher_documents.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
+    kyc_reviewNotes: varchar('kyc_review_notes'),
+    kyc_reviewedAt: timestamp('kyc_reviewed_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    studentAllocation_status: enum_teacher_profiles_student_allocation_status(
+      'student_allocation_status',
+    ).default('unallocated'),
+    studentAllocation_allocatedCount: numeric('student_allocation_allocated_count', {
+      mode: 'number',
+    }).default(0),
+    studentAllocation_studentsSummary: varchar('student_allocation_students_summary').default(
+      'Unallocated',
+    ),
+    studentAllocation_allocationDate: varchar('student_allocation_allocation_date').default('None'),
+    account_status: enum_teacher_profiles_account_status('account_status').default('active'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('teacher_profiles_teacher_enquiry_idx').on(columns.teacherEnquiry),
+    uniqueIndex('teacher_profiles_user_idx').on(columns.user),
+    index('teacher_profiles_evaluation_idx').on(columns.evaluation),
+    index('teacher_profiles_evaluation_score_idx').on(columns.evaluationScore),
+    index('teacher_profiles_availability_status_idx').on(columns.availabilityStatus),
+    index('teacher_profiles_approved_by_idx').on(columns.approvedBy),
+    index('teacher_profiles_kyc_kyc_aadhaar_document_idx').on(columns.kyc_aadhaarDocument),
+    index('teacher_profiles_kyc_kyc_qualification_document_idx').on(
+      columns.kyc_qualificationDocument,
+    ),
+    index('teacher_profiles_updated_at_idx').on(columns.updatedAt),
+    index('teacher_profiles_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const email_logs = pgTable(
+  'email_logs',
+  {
+    id: serial('id').primaryKey(),
+    recipient: varchar('recipient').notNull(),
+    recipientName: varchar('recipient_name'),
+    template: varchar('template').notNull(),
+    subject: varchar('subject').notNull(),
+    status: enum_email_logs_status('status').notNull().default('queued'),
+    error: varchar('error'),
+    attempts: numeric('attempts', { mode: 'number' }).default(0),
+    messageId: varchar('message_id'),
+    sentAt: timestamp('sent_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    relatedType: varchar('related_type'),
+    relatedId: varchar('related_id'),
+    dedupeKey: varchar('dedupe_key'),
+    retryable: boolean('retryable').default(false),
+    templateData: jsonb('template_data'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('email_logs_recipient_idx').on(columns.recipient),
+    index('email_logs_template_idx').on(columns.template),
+    index('email_logs_status_idx').on(columns.status),
+    index('email_logs_related_type_idx').on(columns.relatedType),
+    index('email_logs_related_id_idx').on(columns.relatedId),
+    index('email_logs_dedupe_key_idx').on(columns.dedupeKey),
+    index('email_logs_updated_at_idx').on(columns.updatedAt),
+    index('email_logs_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const payments_events = pgTable(
+  'payments_events',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    type: varchar('type').notNull(),
+    at: timestamp('at', { mode: 'string', withTimezone: true, precision: 3 }),
+    source: varchar('source'),
+    eventId: varchar('event_id'),
+    note: varchar('note'),
+  },
+  (columns) => [
+    index('payments_events_order_idx').on(columns._order),
+    index('payments_events_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [payments.id],
+      name: 'payments_events_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const payments = pgTable(
+  'payments',
+  {
+    id: serial('id').primaryKey(),
+    category: enum_payments_category('category').notNull(),
+    status: enum_payments_status('status').notNull().default('created'),
+    amount: numeric('amount', { mode: 'number' }).notNull(),
+    currency: varchar('currency').default('INR'),
+    gateway: varchar('gateway').default('razorpay'),
+    mode: enum_payments_mode('mode'),
+    razorpayOrderId: varchar('razorpay_order_id'),
+    razorpayPaymentId: varchar('razorpay_payment_id'),
+    receipt: varchar('receipt'),
+    method: varchar('method'),
+    payerName: varchar('payer_name'),
+    payerEmail: varchar('payer_email'),
+    payerPhone: varchar('payer_phone'),
+    payerUser: integer('payer_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    teacherEnquiry: integer('teacher_enquiry_id').references(() => teacher_enquiries.id, {
+      onDelete: 'set null',
+    }),
+    description: varchar('description'),
+    paidAt: timestamp('paid_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    failureReason: varchar('failure_reason'),
+    refundedAmount: numeric('refunded_amount', { mode: 'number' }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index('payments_category_idx').on(columns.category),
+    index('payments_status_idx').on(columns.status),
+    index('payments_mode_idx').on(columns.mode),
+    uniqueIndex('payments_razorpay_order_id_idx').on(columns.razorpayOrderId),
+    index('payments_razorpay_payment_id_idx').on(columns.razorpayPaymentId),
+    index('payments_payer_user_idx').on(columns.payerUser),
+    index('payments_teacher_enquiry_idx').on(columns.teacherEnquiry),
+    index('payments_paid_at_idx').on(columns.paidAt),
+    index('payments_updated_at_idx').on(columns.updatedAt),
+    index('payments_created_at_idx').on(columns.createdAt),
   ],
 )
 
@@ -346,10 +1884,31 @@ export const payload_locked_documents_rels = pgTable(
     path: varchar('path').notNull(),
     usersID: integer('users_id'),
     mediaID: integer('media_id'),
+    'user-filesID': integer('user_files_id'),
     'student-enquiriesID': integer('student_enquiries_id'),
+    studentsID: integer('students_id'),
+    'student-assessmentsID': integer('student_assessments_id'),
+    'student-testsID': integer('student_tests_id'),
+    'student-test-paymentsID': integer('student_test_payments_id'),
+    'student-test-reportsID': integer('student_test_reports_id'),
+    'student-test-report-sharesID': integer('student_test_report_shares_id'),
+    'enquiry-testsID': integer('enquiry_tests_id'),
+    'teaching-sessionsID': integer('teaching_sessions_id'),
+    'teacher-payoutsID': integer('teacher_payouts_id'),
+    'push-subscriptionsID': integer('push_subscriptions_id'),
+    notificationsID: integer('notifications_id'),
+    'user-devicesID': integer('user_devices_id'),
+    'notification-deliveriesID': integer('notification_deliveries_id'),
+    'allocation-workID': integer('allocation_work_id'),
     'teacher-documentsID': integer('teacher_documents_id'),
     'teacher-enquiriesID': integer('teacher_enquiries_id'),
+    'teacher-evaluationsID': integer('teacher_evaluations_id'),
+    'teacher-matchesID': integer('teacher_matches_id'),
+    'teacher-allocationsID': integer('teacher_allocations_id'),
     'enquiry-audit-logID': integer('enquiry_audit_log_id'),
+    'teacher-profilesID': integer('teacher_profiles_id'),
+    'email-logsID': integer('email_logs_id'),
+    paymentsID: integer('payments_id'),
   },
   (columns) => [
     index('payload_locked_documents_rels_order_idx').on(columns.order),
@@ -357,18 +1916,59 @@ export const payload_locked_documents_rels = pgTable(
     index('payload_locked_documents_rels_path_idx').on(columns.path),
     index('payload_locked_documents_rels_users_id_idx').on(columns.usersID),
     index('payload_locked_documents_rels_media_id_idx').on(columns.mediaID),
+    index('payload_locked_documents_rels_user_files_id_idx').on(columns['user-filesID']),
     index('payload_locked_documents_rels_student_enquiries_id_idx').on(
       columns['student-enquiriesID'],
     ),
+    index('payload_locked_documents_rels_students_id_idx').on(columns.studentsID),
+    index('payload_locked_documents_rels_student_assessments_id_idx').on(
+      columns['student-assessmentsID'],
+    ),
+    index('payload_locked_documents_rels_student_tests_id_idx').on(columns['student-testsID']),
+    index('payload_locked_documents_rels_student_test_payments_id_idx').on(
+      columns['student-test-paymentsID'],
+    ),
+    index('payload_locked_documents_rels_student_test_reports_id_idx').on(
+      columns['student-test-reportsID'],
+    ),
+    index('payload_locked_documents_rels_student_test_report_shares_idx').on(
+      columns['student-test-report-sharesID'],
+    ),
+    index('payload_locked_documents_rels_enquiry_tests_id_idx').on(columns['enquiry-testsID']),
+    index('payload_locked_documents_rels_teaching_sessions_id_idx').on(
+      columns['teaching-sessionsID'],
+    ),
+    index('payload_locked_documents_rels_teacher_payouts_id_idx').on(columns['teacher-payoutsID']),
+    index('payload_locked_documents_rels_push_subscriptions_id_idx').on(
+      columns['push-subscriptionsID'],
+    ),
+    index('payload_locked_documents_rels_notifications_id_idx').on(columns.notificationsID),
+    index('payload_locked_documents_rels_user_devices_id_idx').on(columns['user-devicesID']),
+    index('payload_locked_documents_rels_notification_deliveries_id_idx').on(
+      columns['notification-deliveriesID'],
+    ),
+    index('payload_locked_documents_rels_allocation_work_id_idx').on(columns['allocation-workID']),
     index('payload_locked_documents_rels_teacher_documents_id_idx').on(
       columns['teacher-documentsID'],
     ),
     index('payload_locked_documents_rels_teacher_enquiries_id_idx').on(
       columns['teacher-enquiriesID'],
     ),
+    index('payload_locked_documents_rels_teacher_evaluations_id_idx').on(
+      columns['teacher-evaluationsID'],
+    ),
+    index('payload_locked_documents_rels_teacher_matches_id_idx').on(columns['teacher-matchesID']),
+    index('payload_locked_documents_rels_teacher_allocations_id_idx').on(
+      columns['teacher-allocationsID'],
+    ),
     index('payload_locked_documents_rels_enquiry_audit_log_id_idx').on(
       columns['enquiry-audit-logID'],
     ),
+    index('payload_locked_documents_rels_teacher_profiles_id_idx').on(
+      columns['teacher-profilesID'],
+    ),
+    index('payload_locked_documents_rels_email_logs_id_idx').on(columns['email-logsID']),
+    index('payload_locked_documents_rels_payments_id_idx').on(columns.paymentsID),
     foreignKey({
       columns: [columns['parent']],
       foreignColumns: [payload_locked_documents.id],
@@ -385,9 +1985,84 @@ export const payload_locked_documents_rels = pgTable(
       name: 'payload_locked_documents_rels_media_fk',
     }).onDelete('cascade'),
     foreignKey({
+      columns: [columns['user-filesID']],
+      foreignColumns: [user_files.id],
+      name: 'payload_locked_documents_rels_user_files_fk',
+    }).onDelete('cascade'),
+    foreignKey({
       columns: [columns['student-enquiriesID']],
       foreignColumns: [student_enquiries.id],
       name: 'payload_locked_documents_rels_student_enquiries_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['studentsID']],
+      foreignColumns: [students.id],
+      name: 'payload_locked_documents_rels_students_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['student-assessmentsID']],
+      foreignColumns: [student_assessments.id],
+      name: 'payload_locked_documents_rels_student_assessments_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['student-testsID']],
+      foreignColumns: [student_tests.id],
+      name: 'payload_locked_documents_rels_student_tests_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['student-test-paymentsID']],
+      foreignColumns: [student_test_payments.id],
+      name: 'payload_locked_documents_rels_student_test_payments_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['student-test-reportsID']],
+      foreignColumns: [student_test_reports.id],
+      name: 'payload_locked_documents_rels_student_test_reports_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['student-test-report-sharesID']],
+      foreignColumns: [student_test_report_shares.id],
+      name: 'payload_locked_documents_rels_student_test_report_shares_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['enquiry-testsID']],
+      foreignColumns: [enquiry_tests.id],
+      name: 'payload_locked_documents_rels_enquiry_tests_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['teaching-sessionsID']],
+      foreignColumns: [teaching_sessions.id],
+      name: 'payload_locked_documents_rels_teaching_sessions_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['teacher-payoutsID']],
+      foreignColumns: [teacher_payouts.id],
+      name: 'payload_locked_documents_rels_teacher_payouts_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['push-subscriptionsID']],
+      foreignColumns: [push_subscriptions.id],
+      name: 'payload_locked_documents_rels_push_subscriptions_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['notificationsID']],
+      foreignColumns: [notifications.id],
+      name: 'payload_locked_documents_rels_notifications_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['user-devicesID']],
+      foreignColumns: [user_devices.id],
+      name: 'payload_locked_documents_rels_user_devices_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['notification-deliveriesID']],
+      foreignColumns: [notification_deliveries.id],
+      name: 'payload_locked_documents_rels_notification_deliveries_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['allocation-workID']],
+      foreignColumns: [allocation_work.id],
+      name: 'payload_locked_documents_rels_allocation_work_fk',
     }).onDelete('cascade'),
     foreignKey({
       columns: [columns['teacher-documentsID']],
@@ -400,9 +2075,39 @@ export const payload_locked_documents_rels = pgTable(
       name: 'payload_locked_documents_rels_teacher_enquiries_fk',
     }).onDelete('cascade'),
     foreignKey({
+      columns: [columns['teacher-evaluationsID']],
+      foreignColumns: [teacher_evaluations.id],
+      name: 'payload_locked_documents_rels_teacher_evaluations_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['teacher-matchesID']],
+      foreignColumns: [teacher_matches.id],
+      name: 'payload_locked_documents_rels_teacher_matches_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['teacher-allocationsID']],
+      foreignColumns: [teacher_allocations.id],
+      name: 'payload_locked_documents_rels_teacher_allocations_fk',
+    }).onDelete('cascade'),
+    foreignKey({
       columns: [columns['enquiry-audit-logID']],
       foreignColumns: [enquiry_audit_log.id],
       name: 'payload_locked_documents_rels_enquiry_audit_log_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['teacher-profilesID']],
+      foreignColumns: [teacher_profiles.id],
+      name: 'payload_locked_documents_rels_teacher_profiles_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['email-logsID']],
+      foreignColumns: [email_logs.id],
+      name: 'payload_locked_documents_rels_email_logs_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['paymentsID']],
+      foreignColumns: [payments.id],
+      name: 'payload_locked_documents_rels_payments_fk',
     }).onDelete('cascade'),
   ],
 )
@@ -473,6 +2178,14 @@ export const payload_migrations = pgTable(
   ],
 )
 
+export const teacher_evaluation_config = pgTable('teacher_evaluation_config', {
+  id: serial('id').primaryKey(),
+  writtenTestWeight: numeric('written_test_weight', { mode: 'number' }).notNull().default(0.5),
+  interviewWeight: numeric('interview_weight', { mode: 'number' }).notNull().default(0.5),
+  updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 }),
+  createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 }),
+})
+
 export const relations_users_sessions = relations(users_sessions, ({ one }) => ({
   _parentID: one(users, {
     fields: [users_sessions._parentID],
@@ -485,7 +2198,20 @@ export const relations_users = relations(users, ({ many }) => ({
     relationName: 'sessions',
   }),
 }))
-export const relations_media = relations(media, () => ({}))
+export const relations_media = relations(media, ({ one }) => ({
+  owner: one(users, {
+    fields: [media.owner],
+    references: [users.id],
+    relationName: 'owner',
+  }),
+}))
+export const relations_user_files = relations(user_files, ({ one }) => ({
+  owner: one(users, {
+    fields: [user_files.owner],
+    references: [users.id],
+    relationName: 'owner',
+  }),
+}))
 export const relations_student_enquiries_subjects = relations(
   student_enquiries_subjects,
   ({ one }) => ({
@@ -506,7 +2232,286 @@ export const relations_student_enquiries = relations(student_enquiries, ({ one, 
     relationName: 'assignedTo',
   }),
 }))
-export const relations_teacher_documents = relations(teacher_documents, () => ({}))
+export const relations_students_subjects = relations(students_subjects, ({ one }) => ({
+  _parentID: one(students, {
+    fields: [students_subjects._parentID],
+    references: [students.id],
+    relationName: 'subjects',
+  }),
+}))
+export const relations_students = relations(students, ({ one, many }) => ({
+  subjects: many(students_subjects, {
+    relationName: 'subjects',
+  }),
+  studentEnquiry: one(student_enquiries, {
+    fields: [students.studentEnquiry],
+    references: [student_enquiries.id],
+    relationName: 'studentEnquiry',
+  }),
+  convertedBy: one(users, {
+    fields: [students.convertedBy],
+    references: [users.id],
+    relationName: 'convertedBy',
+  }),
+}))
+export const relations_student_assessments_strengths = relations(
+  student_assessments_strengths,
+  ({ one }) => ({
+    _parentID: one(student_assessments, {
+      fields: [student_assessments_strengths._parentID],
+      references: [student_assessments.id],
+      relationName: 'strengths',
+    }),
+  }),
+)
+export const relations_student_assessments_weaknesses = relations(
+  student_assessments_weaknesses,
+  ({ one }) => ({
+    _parentID: one(student_assessments, {
+      fields: [student_assessments_weaknesses._parentID],
+      references: [student_assessments.id],
+      relationName: 'weaknesses',
+    }),
+  }),
+)
+export const relations_student_assessments = relations(student_assessments, ({ one, many }) => ({
+  student: one(students, {
+    fields: [student_assessments.student],
+    references: [students.id],
+    relationName: 'student',
+  }),
+  strengths: many(student_assessments_strengths, {
+    relationName: 'strengths',
+  }),
+  weaknesses: many(student_assessments_weaknesses, {
+    relationName: 'weaknesses',
+  }),
+  assessedBy: one(users, {
+    fields: [student_assessments.assessedBy],
+    references: [users.id],
+    relationName: 'assessedBy',
+  }),
+}))
+export const relations_student_tests_assignment_history = relations(
+  student_tests_assignment_history,
+  ({ one }) => ({
+    _parentID: one(student_tests, {
+      fields: [student_tests_assignment_history._parentID],
+      references: [student_tests.id],
+      relationName: 'assignmentHistory',
+    }),
+    tester: one(users, {
+      fields: [student_tests_assignment_history.tester],
+      references: [users.id],
+      relationName: 'tester',
+    }),
+    assignedBy: one(users, {
+      fields: [student_tests_assignment_history.assignedBy],
+      references: [users.id],
+      relationName: 'assignedBy',
+    }),
+  }),
+)
+export const relations_student_tests = relations(student_tests, ({ one, many }) => ({
+  student: one(students, {
+    fields: [student_tests.student],
+    references: [students.id],
+    relationName: 'student',
+  }),
+  assignedTester: one(users, {
+    fields: [student_tests.assignedTester],
+    references: [users.id],
+    relationName: 'assignedTester',
+  }),
+  assignedBy: one(users, {
+    fields: [student_tests.assignedBy],
+    references: [users.id],
+    relationName: 'assignedBy',
+  }),
+  assignmentHistory: many(student_tests_assignment_history, {
+    relationName: 'assignmentHistory',
+  }),
+  createdBy: one(users, {
+    fields: [student_tests.createdBy],
+    references: [users.id],
+    relationName: 'createdBy',
+  }),
+}))
+export const relations_student_test_payments = relations(student_test_payments, ({ one }) => ({
+  studentTest: one(student_tests, {
+    fields: [student_test_payments.studentTest],
+    references: [student_tests.id],
+    relationName: 'studentTest',
+  }),
+  student: one(students, {
+    fields: [student_test_payments.student],
+    references: [students.id],
+    relationName: 'student',
+  }),
+  recordedBy: one(users, {
+    fields: [student_test_payments.recordedBy],
+    references: [users.id],
+    relationName: 'recordedBy',
+  }),
+}))
+export const relations_student_test_reports_subject_results = relations(
+  student_test_reports_subject_results,
+  ({ one }) => ({
+    _parentID: one(student_test_reports, {
+      fields: [student_test_reports_subject_results._parentID],
+      references: [student_test_reports.id],
+      relationName: 'subjectResults',
+    }),
+  }),
+)
+export const relations_student_test_reports = relations(student_test_reports, ({ one, many }) => ({
+  studentTest: one(student_tests, {
+    fields: [student_test_reports.studentTest],
+    references: [student_tests.id],
+    relationName: 'studentTest',
+  }),
+  student: one(students, {
+    fields: [student_test_reports.student],
+    references: [students.id],
+    relationName: 'student',
+  }),
+  subjectResults: many(student_test_reports_subject_results, {
+    relationName: 'subjectResults',
+  }),
+  submittedBy: one(users, {
+    fields: [student_test_reports.submittedBy],
+    references: [users.id],
+    relationName: 'submittedBy',
+  }),
+}))
+export const relations_student_test_report_shares = relations(
+  student_test_report_shares,
+  ({ one }) => ({
+    studentTest: one(student_tests, {
+      fields: [student_test_report_shares.studentTest],
+      references: [student_tests.id],
+      relationName: 'studentTest',
+    }),
+    report: one(student_test_reports, {
+      fields: [student_test_report_shares.report],
+      references: [student_test_reports.id],
+      relationName: 'report',
+    }),
+    student: one(students, {
+      fields: [student_test_report_shares.student],
+      references: [students.id],
+      relationName: 'student',
+    }),
+    sharedBy: one(users, {
+      fields: [student_test_report_shares.sharedBy],
+      references: [users.id],
+      relationName: 'sharedBy',
+    }),
+  }),
+)
+export const relations_enquiry_tests_history = relations(enquiry_tests_history, ({ one }) => ({
+  _parentID: one(enquiry_tests, {
+    fields: [enquiry_tests_history._parentID],
+    references: [enquiry_tests.id],
+    relationName: 'history',
+  }),
+  by: one(users, {
+    fields: [enquiry_tests_history.by],
+    references: [users.id],
+    relationName: 'by',
+  }),
+}))
+export const relations_enquiry_tests = relations(enquiry_tests, ({ one, many }) => ({
+  studentEnquiry: one(student_enquiries, {
+    fields: [enquiry_tests.studentEnquiry],
+    references: [student_enquiries.id],
+    relationName: 'studentEnquiry',
+  }),
+  tester: one(users, {
+    fields: [enquiry_tests.tester],
+    references: [users.id],
+    relationName: 'tester',
+  }),
+  history: many(enquiry_tests_history, {
+    relationName: 'history',
+  }),
+  createdBy: one(users, {
+    fields: [enquiry_tests.createdBy],
+    references: [users.id],
+    relationName: 'createdBy',
+  }),
+}))
+export const relations_teaching_sessions = relations(teaching_sessions, ({ one }) => ({
+  allocation: one(teacher_allocations, {
+    fields: [teaching_sessions.allocation],
+    references: [teacher_allocations.id],
+    relationName: 'allocation',
+  }),
+}))
+export const relations_teacher_payouts = relations(teacher_payouts, ({ one }) => ({
+  allocation: one(teacher_allocations, {
+    fields: [teacher_payouts.allocation],
+    references: [teacher_allocations.id],
+    relationName: 'allocation',
+  }),
+  teacher: one(teacher_profiles, {
+    fields: [teacher_payouts.teacher],
+    references: [teacher_profiles.id],
+    relationName: 'teacher',
+  }),
+  recordedBy: one(users, {
+    fields: [teacher_payouts.recordedBy],
+    references: [users.id],
+    relationName: 'recordedBy',
+  }),
+}))
+export const relations_push_subscriptions = relations(push_subscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [push_subscriptions.user],
+    references: [users.id],
+    relationName: 'user',
+  }),
+}))
+export const relations_notifications = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.user],
+    references: [users.id],
+    relationName: 'user',
+  }),
+}))
+export const relations_user_devices = relations(user_devices, ({ one }) => ({
+  user: one(users, {
+    fields: [user_devices.user],
+    references: [users.id],
+    relationName: 'user',
+  }),
+}))
+export const relations_notification_deliveries = relations(notification_deliveries, ({ one }) => ({
+  notification: one(notifications, {
+    fields: [notification_deliveries.notification],
+    references: [notifications.id],
+    relationName: 'notification',
+  }),
+  device: one(user_devices, {
+    fields: [notification_deliveries.device],
+    references: [user_devices.id],
+    relationName: 'device',
+  }),
+}))
+export const relations_allocation_work = relations(allocation_work, ({ one }) => ({
+  allocation: one(teacher_allocations, {
+    fields: [allocation_work.allocation],
+    references: [teacher_allocations.id],
+    relationName: 'allocation',
+  }),
+}))
+export const relations_teacher_documents = relations(teacher_documents, ({ one }) => ({
+  owner: one(users, {
+    fields: [teacher_documents.owner],
+    references: [users.id],
+    relationName: 'owner',
+  }),
+}))
 export const relations_teacher_enquiries = relations(teacher_enquiries, ({ one }) => ({
   aadhaarDocument: one(teacher_documents, {
     fields: [teacher_enquiries.aadhaarDocument],
@@ -522,6 +2527,126 @@ export const relations_teacher_enquiries = relations(teacher_enquiries, ({ one }
     fields: [teacher_enquiries.reviewedBy],
     references: [users.id],
     relationName: 'reviewedBy',
+  }),
+  teacherUser: one(users, {
+    fields: [teacher_enquiries.teacherUser],
+    references: [users.id],
+    relationName: 'teacherUser',
+  }),
+  teacherProfile: one(teacher_profiles, {
+    fields: [teacher_enquiries.teacherProfile],
+    references: [teacher_profiles.id],
+    relationName: 'teacherProfile',
+  }),
+}))
+export const relations_teacher_evaluations_revision_history = relations(
+  teacher_evaluations_revision_history,
+  ({ one }) => ({
+    _parentID: one(teacher_evaluations, {
+      fields: [teacher_evaluations_revision_history._parentID],
+      references: [teacher_evaluations.id],
+      relationName: 'revisionHistory',
+    }),
+    changedBy: one(users, {
+      fields: [teacher_evaluations_revision_history.changedBy],
+      references: [users.id],
+      relationName: 'changedBy',
+    }),
+  }),
+)
+export const relations_teacher_evaluations = relations(teacher_evaluations, ({ one, many }) => ({
+  teacherEnquiry: one(teacher_enquiries, {
+    fields: [teacher_evaluations.teacherEnquiry],
+    references: [teacher_enquiries.id],
+    relationName: 'teacherEnquiry',
+  }),
+  writtenTest_recordedBy: one(users, {
+    fields: [teacher_evaluations.writtenTest_recordedBy],
+    references: [users.id],
+    relationName: 'writtenTest_recordedBy',
+  }),
+  interview_recordedBy: one(users, {
+    fields: [teacher_evaluations.interview_recordedBy],
+    references: [users.id],
+    relationName: 'interview_recordedBy',
+  }),
+  evaluator: one(users, {
+    fields: [teacher_evaluations.evaluator],
+    references: [users.id],
+    relationName: 'evaluator',
+  }),
+  lastUpdatedBy: one(users, {
+    fields: [teacher_evaluations.lastUpdatedBy],
+    references: [users.id],
+    relationName: 'lastUpdatedBy',
+  }),
+  revisionHistory: many(teacher_evaluations_revision_history, {
+    relationName: 'revisionHistory',
+  }),
+}))
+export const relations_teacher_matches = relations(teacher_matches, ({ one }) => ({
+  student: one(students, {
+    fields: [teacher_matches.student],
+    references: [students.id],
+    relationName: 'student',
+  }),
+  teacher: one(teacher_profiles, {
+    fields: [teacher_matches.teacher],
+    references: [teacher_profiles.id],
+    relationName: 'teacher',
+  }),
+  createdBy: one(users, {
+    fields: [teacher_matches.createdBy],
+    references: [users.id],
+    relationName: 'createdBy',
+  }),
+}))
+export const relations_teacher_allocations_timetable = relations(
+  teacher_allocations_timetable,
+  ({ one }) => ({
+    _parentID: one(teacher_allocations, {
+      fields: [teacher_allocations_timetable._parentID],
+      references: [teacher_allocations.id],
+      relationName: 'timetable',
+    }),
+  }),
+)
+export const relations_teacher_allocations_status_history = relations(
+  teacher_allocations_status_history,
+  ({ one }) => ({
+    _parentID: one(teacher_allocations, {
+      fields: [teacher_allocations_status_history._parentID],
+      references: [teacher_allocations.id],
+      relationName: 'statusHistory',
+    }),
+    changedBy: one(users, {
+      fields: [teacher_allocations_status_history.changedBy],
+      references: [users.id],
+      relationName: 'changedBy',
+    }),
+  }),
+)
+export const relations_teacher_allocations = relations(teacher_allocations, ({ one, many }) => ({
+  student: one(students, {
+    fields: [teacher_allocations.student],
+    references: [students.id],
+    relationName: 'student',
+  }),
+  teacher: one(teacher_profiles, {
+    fields: [teacher_allocations.teacher],
+    references: [teacher_profiles.id],
+    relationName: 'teacher',
+  }),
+  timetable: many(teacher_allocations_timetable, {
+    relationName: 'timetable',
+  }),
+  allocatedBy: one(users, {
+    fields: [teacher_allocations.allocatedBy],
+    references: [users.id],
+    relationName: 'allocatedBy',
+  }),
+  statusHistory: many(teacher_allocations_status_history, {
+    relationName: 'statusHistory',
   }),
 }))
 export const relations_enquiry_audit_log = relations(enquiry_audit_log, ({ one }) => ({
@@ -539,6 +2664,61 @@ export const relations_enquiry_audit_log = relations(enquiry_audit_log, ({ one }
     fields: [enquiry_audit_log.changedBy],
     references: [users.id],
     relationName: 'changedBy',
+  }),
+}))
+export const relations_teacher_profiles = relations(teacher_profiles, ({ one }) => ({
+  teacherEnquiry: one(teacher_enquiries, {
+    fields: [teacher_profiles.teacherEnquiry],
+    references: [teacher_enquiries.id],
+    relationName: 'teacherEnquiry',
+  }),
+  user: one(users, {
+    fields: [teacher_profiles.user],
+    references: [users.id],
+    relationName: 'user',
+  }),
+  evaluation: one(teacher_evaluations, {
+    fields: [teacher_profiles.evaluation],
+    references: [teacher_evaluations.id],
+    relationName: 'evaluation',
+  }),
+  approvedBy: one(users, {
+    fields: [teacher_profiles.approvedBy],
+    references: [users.id],
+    relationName: 'approvedBy',
+  }),
+  kyc_aadhaarDocument: one(teacher_documents, {
+    fields: [teacher_profiles.kyc_aadhaarDocument],
+    references: [teacher_documents.id],
+    relationName: 'kyc_aadhaarDocument',
+  }),
+  kyc_qualificationDocument: one(teacher_documents, {
+    fields: [teacher_profiles.kyc_qualificationDocument],
+    references: [teacher_documents.id],
+    relationName: 'kyc_qualificationDocument',
+  }),
+}))
+export const relations_email_logs = relations(email_logs, () => ({}))
+export const relations_payments_events = relations(payments_events, ({ one }) => ({
+  _parentID: one(payments, {
+    fields: [payments_events._parentID],
+    references: [payments.id],
+    relationName: 'events',
+  }),
+}))
+export const relations_payments = relations(payments, ({ one, many }) => ({
+  payerUser: one(users, {
+    fields: [payments.payerUser],
+    references: [users.id],
+    relationName: 'payerUser',
+  }),
+  teacherEnquiry: one(teacher_enquiries, {
+    fields: [payments.teacherEnquiry],
+    references: [teacher_enquiries.id],
+    relationName: 'teacherEnquiry',
+  }),
+  events: many(payments_events, {
+    relationName: 'events',
   }),
 }))
 export const relations_payload_kv = relations(payload_kv, () => ({}))
@@ -560,10 +2740,85 @@ export const relations_payload_locked_documents_rels = relations(
       references: [media.id],
       relationName: 'media',
     }),
+    'user-filesID': one(user_files, {
+      fields: [payload_locked_documents_rels['user-filesID']],
+      references: [user_files.id],
+      relationName: 'user-files',
+    }),
     'student-enquiriesID': one(student_enquiries, {
       fields: [payload_locked_documents_rels['student-enquiriesID']],
       references: [student_enquiries.id],
       relationName: 'student-enquiries',
+    }),
+    studentsID: one(students, {
+      fields: [payload_locked_documents_rels.studentsID],
+      references: [students.id],
+      relationName: 'students',
+    }),
+    'student-assessmentsID': one(student_assessments, {
+      fields: [payload_locked_documents_rels['student-assessmentsID']],
+      references: [student_assessments.id],
+      relationName: 'student-assessments',
+    }),
+    'student-testsID': one(student_tests, {
+      fields: [payload_locked_documents_rels['student-testsID']],
+      references: [student_tests.id],
+      relationName: 'student-tests',
+    }),
+    'student-test-paymentsID': one(student_test_payments, {
+      fields: [payload_locked_documents_rels['student-test-paymentsID']],
+      references: [student_test_payments.id],
+      relationName: 'student-test-payments',
+    }),
+    'student-test-reportsID': one(student_test_reports, {
+      fields: [payload_locked_documents_rels['student-test-reportsID']],
+      references: [student_test_reports.id],
+      relationName: 'student-test-reports',
+    }),
+    'student-test-report-sharesID': one(student_test_report_shares, {
+      fields: [payload_locked_documents_rels['student-test-report-sharesID']],
+      references: [student_test_report_shares.id],
+      relationName: 'student-test-report-shares',
+    }),
+    'enquiry-testsID': one(enquiry_tests, {
+      fields: [payload_locked_documents_rels['enquiry-testsID']],
+      references: [enquiry_tests.id],
+      relationName: 'enquiry-tests',
+    }),
+    'teaching-sessionsID': one(teaching_sessions, {
+      fields: [payload_locked_documents_rels['teaching-sessionsID']],
+      references: [teaching_sessions.id],
+      relationName: 'teaching-sessions',
+    }),
+    'teacher-payoutsID': one(teacher_payouts, {
+      fields: [payload_locked_documents_rels['teacher-payoutsID']],
+      references: [teacher_payouts.id],
+      relationName: 'teacher-payouts',
+    }),
+    'push-subscriptionsID': one(push_subscriptions, {
+      fields: [payload_locked_documents_rels['push-subscriptionsID']],
+      references: [push_subscriptions.id],
+      relationName: 'push-subscriptions',
+    }),
+    notificationsID: one(notifications, {
+      fields: [payload_locked_documents_rels.notificationsID],
+      references: [notifications.id],
+      relationName: 'notifications',
+    }),
+    'user-devicesID': one(user_devices, {
+      fields: [payload_locked_documents_rels['user-devicesID']],
+      references: [user_devices.id],
+      relationName: 'user-devices',
+    }),
+    'notification-deliveriesID': one(notification_deliveries, {
+      fields: [payload_locked_documents_rels['notification-deliveriesID']],
+      references: [notification_deliveries.id],
+      relationName: 'notification-deliveries',
+    }),
+    'allocation-workID': one(allocation_work, {
+      fields: [payload_locked_documents_rels['allocation-workID']],
+      references: [allocation_work.id],
+      relationName: 'allocation-work',
     }),
     'teacher-documentsID': one(teacher_documents, {
       fields: [payload_locked_documents_rels['teacher-documentsID']],
@@ -575,10 +2830,40 @@ export const relations_payload_locked_documents_rels = relations(
       references: [teacher_enquiries.id],
       relationName: 'teacher-enquiries',
     }),
+    'teacher-evaluationsID': one(teacher_evaluations, {
+      fields: [payload_locked_documents_rels['teacher-evaluationsID']],
+      references: [teacher_evaluations.id],
+      relationName: 'teacher-evaluations',
+    }),
+    'teacher-matchesID': one(teacher_matches, {
+      fields: [payload_locked_documents_rels['teacher-matchesID']],
+      references: [teacher_matches.id],
+      relationName: 'teacher-matches',
+    }),
+    'teacher-allocationsID': one(teacher_allocations, {
+      fields: [payload_locked_documents_rels['teacher-allocationsID']],
+      references: [teacher_allocations.id],
+      relationName: 'teacher-allocations',
+    }),
     'enquiry-audit-logID': one(enquiry_audit_log, {
       fields: [payload_locked_documents_rels['enquiry-audit-logID']],
       references: [enquiry_audit_log.id],
       relationName: 'enquiry-audit-log',
+    }),
+    'teacher-profilesID': one(teacher_profiles, {
+      fields: [payload_locked_documents_rels['teacher-profilesID']],
+      references: [teacher_profiles.id],
+      relationName: 'teacher-profiles',
+    }),
+    'email-logsID': one(email_logs, {
+      fields: [payload_locked_documents_rels['email-logsID']],
+      references: [email_logs.id],
+      relationName: 'email-logs',
+    }),
+    paymentsID: one(payments, {
+      fields: [payload_locked_documents_rels.paymentsID],
+      references: [payments.id],
+      relationName: 'payments',
     }),
   }),
 )
@@ -611,42 +2896,156 @@ export const relations_payload_preferences = relations(payload_preferences, ({ m
   }),
 }))
 export const relations_payload_migrations = relations(payload_migrations, () => ({}))
+export const relations_teacher_evaluation_config = relations(teacher_evaluation_config, () => ({}))
 
 type DatabaseSchema = {
   enum_users_role: typeof enum_users_role
+  enum_users_gender: typeof enum_users_gender
   enum_users_status: typeof enum_users_status
+  enum_media_kind: typeof enum_media_kind
+  enum_student_enquiries_student_gender: typeof enum_student_enquiries_student_gender
+  enum_student_enquiries_preferred_teacher_gender: typeof enum_student_enquiries_preferred_teacher_gender
+  enum_student_enquiries_enquiry_source: typeof enum_student_enquiries_enquiry_source
   enum_student_enquiries_enquiry_status: typeof enum_student_enquiries_enquiry_status
+  enum_student_enquiries_test_mode: typeof enum_student_enquiries_test_mode
+  enum_students_student_gender: typeof enum_students_student_gender
+  enum_students_preferred_teacher_gender: typeof enum_students_preferred_teacher_gender
+  enum_students_status: typeof enum_students_status
+  enum_student_assessments_current_capability: typeof enum_student_assessments_current_capability
+  enum_student_tests_status: typeof enum_student_tests_status
+  enum_student_tests_payment_status: typeof enum_student_tests_payment_status
+  enum_student_test_payments_payment_method: typeof enum_student_test_payments_payment_method
+  enum_student_test_payments_payment_status: typeof enum_student_test_payments_payment_status
+  enum_student_test_reports_capability: typeof enum_student_test_reports_capability
+  enum_student_test_report_shares_channel: typeof enum_student_test_report_shares_channel
+  enum_student_test_report_shares_status: typeof enum_student_test_report_shares_status
+  enum_enquiry_tests_mode: typeof enum_enquiry_tests_mode
+  enum_enquiry_tests_status: typeof enum_enquiry_tests_status
+  enum_enquiry_tests_payment_status: typeof enum_enquiry_tests_payment_status
+  enum_teaching_sessions_status: typeof enum_teaching_sessions_status
+  enum_user_devices_platform: typeof enum_user_devices_platform
+  enum_user_devices_environment: typeof enum_user_devices_environment
+  enum_notification_deliveries_status: typeof enum_notification_deliveries_status
+  enum_allocation_work_kind: typeof enum_allocation_work_kind
+  enum_allocation_work_status: typeof enum_allocation_work_status
+  enum_teacher_enquiries_gender: typeof enum_teacher_enquiries_gender
   enum_teacher_enquiries_application_status: typeof enum_teacher_enquiries_application_status
+  enum_teacher_enquiries_teacher_availability: typeof enum_teacher_enquiries_teacher_availability
+  enum_teacher_enquiries_rejection_category: typeof enum_teacher_enquiries_rejection_category
+  enum_teacher_enquiries_registration_fee_status: typeof enum_teacher_enquiries_registration_fee_status
+  enum_teacher_enquiries_registration_fee_payment_method: typeof enum_teacher_enquiries_registration_fee_payment_method
+  enum_teacher_enquiries_credentials_email_status: typeof enum_teacher_enquiries_credentials_email_status
+  enum_teacher_evaluations_revision_history_previous_status: typeof enum_teacher_evaluations_revision_history_previous_status
+  enum_teacher_evaluations_revision_history_new_status: typeof enum_teacher_evaluations_revision_history_new_status
+  enum_teacher_evaluations_evaluation_status: typeof enum_teacher_evaluations_evaluation_status
+  enum_teacher_matches_match_status: typeof enum_teacher_matches_match_status
+  enum_teacher_allocations_timetable_day: typeof enum_teacher_allocations_timetable_day
+  enum_teacher_allocations_status: typeof enum_teacher_allocations_status
   enum_enquiry_audit_log_enquiry_type: typeof enum_enquiry_audit_log_enquiry_type
   enum_enquiry_audit_log_field_changed: typeof enum_enquiry_audit_log_field_changed
+  enum_teacher_profiles_gender: typeof enum_teacher_profiles_gender
+  enum_teacher_profiles_availability_status: typeof enum_teacher_profiles_availability_status
+  enum_teacher_profiles_approval_status: typeof enum_teacher_profiles_approval_status
+  enum_teacher_profiles_registration_fee_status: typeof enum_teacher_profiles_registration_fee_status
+  enum_teacher_profiles_kyc_status: typeof enum_teacher_profiles_kyc_status
+  enum_teacher_profiles_student_allocation_status: typeof enum_teacher_profiles_student_allocation_status
+  enum_teacher_profiles_account_status: typeof enum_teacher_profiles_account_status
+  enum_email_logs_status: typeof enum_email_logs_status
+  enum_payments_category: typeof enum_payments_category
+  enum_payments_status: typeof enum_payments_status
+  enum_payments_mode: typeof enum_payments_mode
   users_sessions: typeof users_sessions
   users: typeof users
   media: typeof media
+  user_files: typeof user_files
   student_enquiries_subjects: typeof student_enquiries_subjects
   student_enquiries: typeof student_enquiries
+  students_subjects: typeof students_subjects
+  students: typeof students
+  student_assessments_strengths: typeof student_assessments_strengths
+  student_assessments_weaknesses: typeof student_assessments_weaknesses
+  student_assessments: typeof student_assessments
+  student_tests_assignment_history: typeof student_tests_assignment_history
+  student_tests: typeof student_tests
+  student_test_payments: typeof student_test_payments
+  student_test_reports_subject_results: typeof student_test_reports_subject_results
+  student_test_reports: typeof student_test_reports
+  student_test_report_shares: typeof student_test_report_shares
+  enquiry_tests_history: typeof enquiry_tests_history
+  enquiry_tests: typeof enquiry_tests
+  teaching_sessions: typeof teaching_sessions
+  teacher_payouts: typeof teacher_payouts
+  push_subscriptions: typeof push_subscriptions
+  notifications: typeof notifications
+  user_devices: typeof user_devices
+  notification_deliveries: typeof notification_deliveries
+  allocation_work: typeof allocation_work
   teacher_documents: typeof teacher_documents
   teacher_enquiries: typeof teacher_enquiries
+  teacher_evaluations_revision_history: typeof teacher_evaluations_revision_history
+  teacher_evaluations: typeof teacher_evaluations
+  teacher_matches: typeof teacher_matches
+  teacher_allocations_timetable: typeof teacher_allocations_timetable
+  teacher_allocations_status_history: typeof teacher_allocations_status_history
+  teacher_allocations: typeof teacher_allocations
   enquiry_audit_log: typeof enquiry_audit_log
+  teacher_profiles: typeof teacher_profiles
+  email_logs: typeof email_logs
+  payments_events: typeof payments_events
+  payments: typeof payments
   payload_kv: typeof payload_kv
   payload_locked_documents: typeof payload_locked_documents
   payload_locked_documents_rels: typeof payload_locked_documents_rels
   payload_preferences: typeof payload_preferences
   payload_preferences_rels: typeof payload_preferences_rels
   payload_migrations: typeof payload_migrations
+  teacher_evaluation_config: typeof teacher_evaluation_config
   relations_users_sessions: typeof relations_users_sessions
   relations_users: typeof relations_users
   relations_media: typeof relations_media
+  relations_user_files: typeof relations_user_files
   relations_student_enquiries_subjects: typeof relations_student_enquiries_subjects
   relations_student_enquiries: typeof relations_student_enquiries
+  relations_students_subjects: typeof relations_students_subjects
+  relations_students: typeof relations_students
+  relations_student_assessments_strengths: typeof relations_student_assessments_strengths
+  relations_student_assessments_weaknesses: typeof relations_student_assessments_weaknesses
+  relations_student_assessments: typeof relations_student_assessments
+  relations_student_tests_assignment_history: typeof relations_student_tests_assignment_history
+  relations_student_tests: typeof relations_student_tests
+  relations_student_test_payments: typeof relations_student_test_payments
+  relations_student_test_reports_subject_results: typeof relations_student_test_reports_subject_results
+  relations_student_test_reports: typeof relations_student_test_reports
+  relations_student_test_report_shares: typeof relations_student_test_report_shares
+  relations_enquiry_tests_history: typeof relations_enquiry_tests_history
+  relations_enquiry_tests: typeof relations_enquiry_tests
+  relations_teaching_sessions: typeof relations_teaching_sessions
+  relations_teacher_payouts: typeof relations_teacher_payouts
+  relations_push_subscriptions: typeof relations_push_subscriptions
+  relations_notifications: typeof relations_notifications
+  relations_user_devices: typeof relations_user_devices
+  relations_notification_deliveries: typeof relations_notification_deliveries
+  relations_allocation_work: typeof relations_allocation_work
   relations_teacher_documents: typeof relations_teacher_documents
   relations_teacher_enquiries: typeof relations_teacher_enquiries
+  relations_teacher_evaluations_revision_history: typeof relations_teacher_evaluations_revision_history
+  relations_teacher_evaluations: typeof relations_teacher_evaluations
+  relations_teacher_matches: typeof relations_teacher_matches
+  relations_teacher_allocations_timetable: typeof relations_teacher_allocations_timetable
+  relations_teacher_allocations_status_history: typeof relations_teacher_allocations_status_history
+  relations_teacher_allocations: typeof relations_teacher_allocations
   relations_enquiry_audit_log: typeof relations_enquiry_audit_log
+  relations_teacher_profiles: typeof relations_teacher_profiles
+  relations_email_logs: typeof relations_email_logs
+  relations_payments_events: typeof relations_payments_events
+  relations_payments: typeof relations_payments
   relations_payload_kv: typeof relations_payload_kv
   relations_payload_locked_documents_rels: typeof relations_payload_locked_documents_rels
   relations_payload_locked_documents: typeof relations_payload_locked_documents
   relations_payload_preferences_rels: typeof relations_payload_preferences_rels
   relations_payload_preferences: typeof relations_payload_preferences
   relations_payload_migrations: typeof relations_payload_migrations
+  relations_teacher_evaluation_config: typeof relations_teacher_evaluation_config
 }
 
 declare module '@payloadcms/db-postgres' {

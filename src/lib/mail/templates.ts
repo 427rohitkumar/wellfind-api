@@ -150,7 +150,7 @@ export const templates: Record<string, MailTemplate<any>> = {
           ...copy.lines.map((l) => p(l)),
           details([['Application', `#${d.applicationId}`], ['Status', copy.label]]),
           // Only offer the portal when the teacher already has a login.
-          ...(copy.cta && d.hasPortal ? [button(copy.cta, `${cfg.teacherPortalUrl}/application`)] : []),
+          ...(copy.cta && d.hasPortal ? [button(copy.cta, cfg.teacherPortalUrl)] : []),
         ],
       }
     },
@@ -179,7 +179,7 @@ export const templates: Record<string, MailTemplate<any>> = {
           : d.upiId
             ? [p('After paying, open your portal and enter the transaction / UTR reference so we can verify it.')]
             : [p('Our team will share the payment details with you shortly.')]),
-        button(d.online ? 'Pay now' : 'Open payment page', `${cfg.teacherPortalUrl}/application`),
+        button(d.online ? 'Pay now' : 'Open payment page', cfg.teacherPortalUrl),
       ],
     }),
   },
@@ -228,7 +228,7 @@ export const templates: Record<string, MailTemplate<any>> = {
             ]
           : []),
         ...(d.renewal ? [] : [p('Our team will complete the final approval and let you know.')]),
-        button('Open your portal', `${cfg.teacherPortalUrl}${d.renewal ? '/fees' : '/application'}`),
+        button('Open your portal', cfg.teacherPortalUrl),
       ],
     }),
   },
@@ -251,7 +251,7 @@ export const templates: Record<string, MailTemplate<any>> = {
             : `Your yearly registration with ${cfg.brandName} is valid until ${fmtDate(d.expiresAt)}. Please renew before then. Renewal is required every year, including while you are teaching.`,
         ),
         details([['Valid until', fmtDate(d.expiresAt)], ['Renewal fee', inr(d.renewalAmount)]]),
-        button('Renew in your portal', `${cfg.teacherPortalUrl}/fees`),
+        button('Renew in your portal', cfg.teacherPortalUrl),
       ],
     }),
   },
@@ -275,7 +275,7 @@ export const templates: Record<string, MailTemplate<any>> = {
           ['Preferred timing', d.timing],
           ...(d.monthlyPayout != null ? ([['Your monthly payout', inr(d.monthlyPayout)]] as Array<[string, string]>) : []),
         ]),
-        button('Accept or reject', `${cfg.teacherPortalUrl}/students`),
+        button('Accept or reject', cfg.teacherPortalUrl),
         note('Please respond promptly so the family can be informed.'),
       ],
     }),
@@ -295,7 +295,7 @@ export const templates: Record<string, MailTemplate<any>> = {
         table(['Student', 'Subject', 'Amount'], d.lines.map((l: any) => [l.student, l.subject, inr(l.amount)])),
         details([['Total payout', inr(d.total)]]),
         p('If something does not look right, reply to this email and our team will help.'),
-        button('View fees and history', `${cfg.teacherPortalUrl}/fees`),
+        button('View fees and history', cfg.teacherPortalUrl),
       ],
     }),
   },

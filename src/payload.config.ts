@@ -26,6 +26,9 @@ import { EnquiryTests } from './collections/EnquiryTests'
 import { TeachingSessions } from './collections/TeachingSessions'
 import { TeacherPayouts } from './collections/TeacherPayouts'
 import { PushSubscriptions } from './collections/PushSubscriptions'
+import { Notifications } from './collections/Notifications'
+import { UserDevices } from './collections/UserDevices'
+import { NotificationDeliveries } from './collections/NotificationDeliveries'
 import { AllocationWork } from './collections/AllocationWork'
 import { TeacherDocuments } from './collections/TeacherDocuments'
 import { TeacherEnquiries } from './collections/TeacherEnquiries'
@@ -40,7 +43,8 @@ import { TeacherEvaluationConfig } from './globals/TeacherEvaluationConfig'
 // PAYLOAD_SECRET and DATABASE_URL are available regardless of import order
 // (vitest workers import this file before setupFiles run, for example).
 import { config as dotenvConfig } from 'dotenv'
-dotenvConfig()
+// Vitest supplies its own isolated env (.env.test); never load the real .env under test.
+if (!process.env.VITEST) dotenvConfig()
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -105,6 +109,9 @@ export default buildConfig({
     TeachingSessions,
     TeacherPayouts,
     PushSubscriptions,
+    Notifications,
+    UserDevices,
+    NotificationDeliveries,
     AllocationWork,
     TeacherDocuments,
     TeacherEnquiries,

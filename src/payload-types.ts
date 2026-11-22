@@ -81,6 +81,9 @@ export interface Config {
     'teaching-sessions': TeachingSession;
     'teacher-payouts': TeacherPayout;
     'push-subscriptions': PushSubscription;
+    notifications: Notification;
+    'user-devices': UserDevice;
+    'notification-deliveries': NotificationDelivery;
     'allocation-work': AllocationWork;
     'teacher-documents': TeacherDocument;
     'teacher-enquiries': TeacherEnquiry;
@@ -112,6 +115,9 @@ export interface Config {
     'teaching-sessions': TeachingSessionsSelect<false> | TeachingSessionsSelect<true>;
     'teacher-payouts': TeacherPayoutsSelect<false> | TeacherPayoutsSelect<true>;
     'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
+    notifications: NotificationsSelect<false> | NotificationsSelect<true>;
+    'user-devices': UserDevicesSelect<false> | UserDevicesSelect<true>;
+    'notification-deliveries': NotificationDeliveriesSelect<false> | NotificationDeliveriesSelect<true>;
     'allocation-work': AllocationWorkSelect<false> | AllocationWorkSelect<true>;
     'teacher-documents': TeacherDocumentsSelect<false> | TeacherDocumentsSelect<true>;
     'teacher-enquiries': TeacherEnquiriesSelect<false> | TeacherEnquiriesSelect<true>;
@@ -995,6 +1001,56 @@ export interface PushSubscription {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifications".
+ */
+export interface Notification {
+  id: number;
+  user: number | User;
+  type: string;
+  title: string;
+  body: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  screen?: string | null;
+  readAt?: string | null;
+  dedupeKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-devices".
+ */
+export interface UserDevice {
+  id: number;
+  user: number | User;
+  fcmToken: string;
+  platform: 'android' | 'ios';
+  environment: 'development' | 'preview' | 'production';
+  active?: boolean | null;
+  lastSeen?: string | null;
+  appVersion?: string | null;
+  deviceName?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-deliveries".
+ */
+export interface NotificationDelivery {
+  id: number;
+  notification: number | Notification;
+  device: number | UserDevice;
+  status: 'sent' | 'failed' | 'invalid_token';
+  attempts?: number | null;
+  errorCode?: string | null;
+  messageId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "allocation-work".
  */
 export interface AllocationWork {
@@ -1248,6 +1304,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'push-subscriptions';
         value: number | PushSubscription;
+      } | null)
+    | ({
+        relationTo: 'notifications';
+        value: number | Notification;
+      } | null)
+    | ({
+        relationTo: 'user-devices';
+        value: number | UserDevice;
+      } | null)
+    | ({
+        relationTo: 'notification-deliveries';
+        value: number | NotificationDelivery;
       } | null)
     | ({
         relationTo: 'allocation-work';
@@ -1695,6 +1763,53 @@ export interface PushSubscriptionsSelect<T extends boolean = true> {
   p256dh?: T;
   auth?: T;
   userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifications_select".
+ */
+export interface NotificationsSelect<T extends boolean = true> {
+  user?: T;
+  type?: T;
+  title?: T;
+  body?: T;
+  entityType?: T;
+  entityId?: T;
+  screen?: T;
+  readAt?: T;
+  dedupeKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-devices_select".
+ */
+export interface UserDevicesSelect<T extends boolean = true> {
+  user?: T;
+  fcmToken?: T;
+  platform?: T;
+  environment?: T;
+  active?: T;
+  lastSeen?: T;
+  appVersion?: T;
+  deviceName?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-deliveries_select".
+ */
+export interface NotificationDeliveriesSelect<T extends boolean = true> {
+  notification?: T;
+  device?: T;
+  status?: T;
+  attempts?: T;
+  errorCode?: T;
+  messageId?: T;
   updatedAt?: T;
   createdAt?: T;
 }

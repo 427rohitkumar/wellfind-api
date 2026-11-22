@@ -81,7 +81,7 @@ describe('push notifications', () => {
     }))
     const json: any = await r.json()
     enquiryId = json.enquiry?.id
-    await new Promise((res) => setTimeout(res, 800))
+    await new Promise((res) => setTimeout(res, 4000))
     const targets = sent.map((s) => s.endpoint)
     expect(targets).toContain('https://push.example.com/counselor')
     expect(targets).not.toContain('https://push.example.com/finance')

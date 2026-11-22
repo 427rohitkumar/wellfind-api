@@ -30,7 +30,7 @@ function wrapGateway(err: unknown): never {
   throw new ServiceError(err instanceof Error ? err.message : 'Payment gateway error.', 502)
 }
 
-async function findByOrderId(payload: Payload, orderId: string): Promise<Record<string, any> | null> {
+export async function findByOrderId(payload: Payload, orderId: string): Promise<Record<string, any> | null> {
   const res = await (payload as any).find({
     collection: 'payments',
     where: { razorpayOrderId: { equals: orderId } },
@@ -162,6 +162,9 @@ async function applyRenewal(
 
   const { notifyPaymentReceived } = await import('@/services/mailNotifications')
   await notifyPaymentReceived(payload, { ...enquiry, registrationFee: newFee }, { renewal: true, paymentId: rp.id })
+  // Renewals keep the fee status at "paid", so the enquiry hook does not fire: announce the payment here (once per payment id).
+  const { pushRegistrationPaid } = await import('@/services/pushEvents')
+  pushRegistrationPaid(payload, { ...enquiry, registrationFee: newFee })
 }
 
 async function markFailed(payload: Payload, row: Record<string, any>, reason: string, source: string, eventId?: string) {
@@ -301,6 +304,44 @@ export async function verifyRegistrationPayment(payload: Payload, user: AuthUser
       return { payment: serializePayment(failed), settled: false }
     }
     return { payment: serializePayment(row), settled: false }
+  } catch (err) {
+    wrapGateway(err)
+  }
+}
+
+/** Verifies and settles a checkout result directly using the orderId (for hosted checkout page). */
+export async function verifyAndSettleCheckout(payload: Payload, body: Record<string, unknown>) {
+  const orderId = typeof body.razorpay_order_id === 'string' ? body.razorpay_order_id : ''
+  const paymentId = typeof body.razorpay_payment_id === 'string' ? body.razorpay_payment_id : ''
+  const signature = typeof body.razorpay_signature === 'string' ? body.razorpay_signature : ''
+  if (!orderId || !paymentId || !signature) {
+    throw new ServiceError('The payment confirmation is incomplete.', 400)
+  }
+
+  const row = await findByOrderId(payload, orderId)
+  if (!row) {
+    throw new ServiceError('Payment order not found.', 404)
+  }
+  if (!verifyCheckoutSignature(orderId, paymentId, signature)) {
+    throw new ServiceError('Payment verification failed.', 400)
+  }
+  if (row.status === 'paid') return { settled: true, payment: row }
+
+  try {
+    let rp = await fetchPayment(paymentId)
+    if (rp.order_id !== orderId || rp.amount !== toPaise(row.amount)) {
+      throw new ServiceError('The paid amount does not match this order.', 400)
+    }
+    if (rp.status === 'authorized') rp = await capturePayment(paymentId, rp.amount)
+    if (rp.status === 'captured') {
+      const paid = await markPaid(payload, row, rp, 'checkout')
+      return { settled: true, payment: paid }
+    }
+    if (rp.status === 'failed') {
+      const failed = await markFailed(payload, row, rp.error_description || 'Payment failed', 'checkout')
+      return { settled: false, payment: failed }
+    }
+    return { settled: false, payment: row }
   } catch (err) {
     wrapGateway(err)
   }

@@ -7,6 +7,14 @@ export const Users: CollectionConfig = {
   },
   auth: true,
   hooks: {
+    // Notifications and devices belong to the user (NOT NULL FKs): remove them so an account can still be deleted.
+    beforeDelete: [
+      async ({ id, req }) => {
+        for (const collection of ['notifications', 'user-devices'] as const) {
+          await (req.payload as any).delete({ collection, where: { user: { equals: id } }, overrideAccess: true, req })
+        }
+      },
+    ],
     afterChange: [
       // Welcome mail for new accounts and a notice when an account is blocked, suspended or restored.
       async ({ operation, previousDoc, doc, req }) => {
@@ -17,6 +25,8 @@ export const Users: CollectionConfig = {
             await notifyAccountCreated(req.payload, doc)
           } else if (operation === 'update') {
             await notifyAccountStatusChange(req.payload, doc, previousDoc?.status)
+            const { pushAccountStatus } = await import('@/services/pushEvents')
+            pushAccountStatus(req.payload, doc, previousDoc?.status)
           }
         } catch {
           /* mail problems must never fail the request */

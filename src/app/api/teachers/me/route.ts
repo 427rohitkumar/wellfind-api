@@ -15,6 +15,56 @@ export async function GET(request: Request): Promise<Response> {
     }
     const p = await findTeacherProfileForUser(auth.payload, auth.user.id)
     if (!p) {
+      const enqRes = await (auth.payload as any).find({
+        collection: 'teacher-enquiries',
+        where: {
+          or: [
+            { teacherUser: { equals: auth.user.id } },
+            { email: { equals: auth.user.email } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const enq = enqRes.docs[0] as Record<string, any> | undefined
+      if (enq) {
+        const regFee = (enq.registrationFee ?? {}) as Record<string, unknown>
+        return apiSuccess(
+          {
+            id: enq.id,
+            name: enq.fullName,
+            email: enq.email ?? auth.user.email ?? null,
+            mobile: enq.mobileNumber ?? null,
+            avatar: (auth.user as any).avatar ?? null,
+            gender: enq.gender ?? null,
+            about: enq.additionalNotes ?? null,
+            primarySubject: enq.primarySubject ?? null,
+            qualification: enq.highestQualification ?? null,
+            experienceYears: enq.teachingExperience ?? 0,
+            classLevels: enq.classLevel ?? null,
+            locality: enq.teachingLocality ?? null,
+            availability: enq.preferredAvailability ?? null,
+            availabilityStatus: 'free',
+            approvalStatus: enq.applicationStatus ?? 'under_review',
+            status: enq.applicationStatus ?? 'under_review',
+            approvedAt: null,
+            registrationFee: {
+              status: regFee.status ?? 'pending',
+              amount: regFee.amount ?? 1000,
+              currency: 'INR',
+              year: null,
+              paymentDate: regFee.paymentDate ?? null,
+              transactionRef: regFee.transactionRef ?? null,
+            },
+            kycStatus: enq.aadhaarDocument ? 'uploaded' : 'pending',
+            createdAt: enq.createdAt,
+            updatedAt: enq.updatedAt,
+          },
+          'Teacher applicant profile summary fetched.',
+        )
+      }
+
       return apiError('No teacher profile is linked to this account.', 403)
     }
     const fee = (p.registrationFee ?? {}) as Record<string, unknown>

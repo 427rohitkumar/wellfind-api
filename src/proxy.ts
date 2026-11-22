@@ -36,7 +36,7 @@ function getAllowedOrigin(origin: string | null): string {
   return allowedList[0] || '*'
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const origin = request.headers.get('origin')
   const allowedOrigin = getAllowedOrigin(origin)
 
@@ -65,6 +65,8 @@ export function middleware(request: NextRequest) {
 
   return response
 }
+
+export const middleware = proxy
 
 export const config = {
   matcher: '/api/:path*',

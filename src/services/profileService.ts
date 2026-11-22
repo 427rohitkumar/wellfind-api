@@ -52,23 +52,86 @@ export async function getMyProfile(payload: Payload, user: AuthUserRecord) {
   }
   if (u.role !== 'teacher') return { ...base, teacher: null }
   const p = await findTeacherProfileForUser(payload, user.id)
-  if (!p) return { ...base, teacher: null }
-  return {
-    ...base,
-    name: p.name,
-    phone: p.mobile,
-    gender: p.gender ?? u.gender ?? null,
-    avatar: p.avatar ?? u.avatar ?? null,
-    teacher: {
-      locality: p.locality ?? '',
-      availability: p.availability ?? '',
-      classLevels: p.classLevels ?? '',
-      about: p.about ?? '',
-      qualification: p.qualification ?? null,
-      primarySubject: p.primarySubject ?? null,
-      experienceYears: p.experienceYears ?? 0,
-    },
+  if (p) {
+    return {
+      ...base,
+      name: p.name || base.name,
+      phone: p.mobile || base.phone,
+      gender: p.gender ?? base.gender ?? null,
+      avatar: p.avatar ?? base.avatar ?? null,
+      teacher: {
+        locality: p.locality ?? '',
+        availability: p.availability ?? '',
+        classLevels: p.classLevels ?? '',
+        about: p.about ?? '',
+        qualification: p.qualification ?? null,
+        primarySubject: p.primarySubject ?? null,
+        experienceYears: p.experienceYears ?? 0,
+      },
+    }
   }
+
+  // Not yet approved as a teacher profile: find application in teacher-enquiries
+  const enqRes = await (payload as any).find({
+    collection: 'teacher-enquiries',
+    where: {
+      or: [
+        { teacherUser: { equals: user.id } },
+        { email: { equals: user.email } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  const enq = enqRes.docs[0] as Record<string, any> | undefined
+  if (enq) {
+    const name = base.name || enq.fullName || null
+    const phone = base.phone || enq.mobileNumber || null
+    const gender = base.gender || enq.gender || null
+
+    if (!base.name || !base.phone || !base.gender) {
+      await (payload as any).update({
+        collection: 'users',
+        id: user.id,
+        data: {
+          ...(name && !base.name ? { fullName: name } : {}),
+          ...(phone && !base.phone ? { phone } : {}),
+          ...(gender && !base.gender ? { gender } : {}),
+        },
+        overrideAccess: true,
+      }).catch(() => undefined)
+    }
+
+    const enqUserId = typeof enq.teacherUser === 'object' ? enq.teacherUser?.id : enq.teacherUser
+    if (!enqUserId) {
+      await (payload as any).update({
+        collection: 'teacher-enquiries',
+        id: enq.id,
+        data: { teacherUser: user.id },
+        overrideAccess: true,
+      }).catch(() => undefined)
+    }
+
+    return {
+      ...base,
+      name,
+      phone,
+      gender,
+      teacher: {
+        locality: enq.teachingLocality ?? '',
+        availability: enq.preferredAvailability ?? '',
+        classLevels: enq.classLevel ?? '',
+        about: enq.additionalNotes ?? '',
+        qualification: enq.highestQualification ?? null,
+        primarySubject: enq.primarySubject ?? null,
+        experienceYears: enq.teachingExperience ?? 0,
+      },
+    }
+  }
+
+  return { ...base, teacher: null }
 }
 
 export async function updateMyProfile(payload: Payload, user: AuthUserRecord, body: Record<string, unknown>) {
@@ -85,28 +148,64 @@ export async function updateMyProfile(payload: Payload, user: AuthUserRecord, bo
 
   if (user.role === 'teacher') {
     const p = await findTeacherProfileForUser(payload, user.id)
-    if (!p) throw new ServiceError('No teacher profile is linked to this account.', 403)
     const mobile = phone(body, 'phone') ?? phone(body, 'mobile')
     const data: Record<string, unknown> = {}
     if (name !== undefined) data.name = name
     if (mobile !== undefined) data.mobile = mobile
     if (g !== undefined) data.gender = g
-    const locality = text(body, 'locality', 200, true)
-    if (locality !== undefined) data.locality = locality
-    const availability = text(body, 'availability', 200, true)
-    if (availability !== undefined) data.availability = availability
-    const classLevels = text(body, 'classLevels', 200)
-    if (classLevels !== undefined) data.classLevels = classLevels || 'All Levels'
-    const about = text(body, 'about', 1000)
-    if (about !== undefined) data.about = about
-    if (Object.keys(data).length === 0) throw bad('body', 'Nothing to update.')
-    if (mobile !== undefined && mobile !== p.mobile) {
-      const dup = await (payload as any).find({ collection: 'teacher-profiles', where: { and: [{ mobile: { equals: mobile } }, { id: { not_equals: p.id } }] }, limit: 1, depth: 0, overrideAccess: true })
-      if (dup.docs.length > 0) throw bad('phone', 'This mobile number is already used by another teacher.')
+
+    if (p) {
+      const locality = text(body, 'locality', 200, true)
+      if (locality !== undefined) data.locality = locality
+      const availability = text(body, 'availability', 200, true)
+      if (availability !== undefined) data.availability = availability
+      const classLevels = text(body, 'classLevels', 200)
+      if (classLevels !== undefined) data.classLevels = classLevels || 'All Levels'
+      const about = text(body, 'about', 1000)
+      if (about !== undefined) data.about = about
+      if (Object.keys(data).length === 0) throw bad('body', 'Nothing to update.')
+      if (mobile !== undefined && mobile !== p.mobile) {
+        const dup = await (payload as any).find({ collection: 'teacher-profiles', where: { and: [{ mobile: { equals: mobile } }, { id: { not_equals: p.id } }] }, limit: 1, depth: 0, overrideAccess: true })
+        if (dup.docs.length > 0) throw bad('phone', 'This mobile number is already used by another teacher.')
+      }
+      await (payload as any).update({ collection: 'teacher-profiles', id: p.id, data, overrideAccess: true })
+      // Keep the login record's display fields in step.
+      await (payload as any).update({ collection: 'users', id: user.id, data: { ...(name !== undefined ? { fullName: name } : {}), ...(mobile !== undefined ? { phone: mobile } : {}), ...(g !== undefined ? { gender: g } : {}) }, overrideAccess: true })
+    } else {
+      // Find enquiry
+      const enqRes = await (payload as any).find({
+        collection: 'teacher-enquiries',
+        where: {
+          or: [
+            { teacherUser: { equals: user.id } },
+            { email: { equals: user.email } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const enq = enqRes.docs[0] as Record<string, any> | undefined
+      if (enq) {
+        const enqData: Record<string, unknown> = {}
+        if (name !== undefined) enqData.fullName = name
+        if (mobile !== undefined) enqData.mobileNumber = mobile
+        if (g !== undefined) enqData.gender = g
+        if (Object.keys(enqData).length > 0) {
+          await (payload as any).update({ collection: 'teacher-enquiries', id: enq.id, data: enqData, overrideAccess: true })
+        }
+      }
+      await (payload as any).update({
+        collection: 'users',
+        id: user.id,
+        data: {
+          ...(name !== undefined ? { fullName: name } : {}),
+          ...(mobile !== undefined ? { phone: mobile } : {}),
+          ...(g !== undefined ? { gender: g } : {}),
+        },
+        overrideAccess: true,
+      })
     }
-    await (payload as any).update({ collection: 'teacher-profiles', id: p.id, data, overrideAccess: true })
-    // Keep the login record's display fields in step.
-    await (payload as any).update({ collection: 'users', id: user.id, data: { ...(name !== undefined ? { fullName: name } : {}), ...(mobile !== undefined ? { phone: mobile } : {}), ...(g !== undefined ? { gender: g } : {}) }, overrideAccess: true })
   } else {
     const ph = phone(body, 'phone')
     const data: Record<string, unknown> = {}

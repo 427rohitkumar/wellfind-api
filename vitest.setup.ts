@@ -1,8 +1,9 @@
 // Any setup scripts you might need go here
 
 // Load .env files
-import { config as dotenvConfig } from 'dotenv'
-dotenvConfig()
+// Environment comes exclusively from .env.test (loaded in vitest.config.mts); never from .env.
+import { assertSafeTestDatabase } from './tests/testDatabaseGuard'
+assertSafeTestDatabase(process.env.DATABASE_URL)
 
 // vitest's jsdom environment provides its own TextEncoder/TextDecoder whose
 // Uint8Array instances are from a different realm than Node's. jose (used by

@@ -56,8 +56,12 @@ export function getMailConfig(): MailConfig {
     replyTo: env.MAIL_REPLY_TO?.trim() || null,
     brandName: env.MAIL_BRAND_NAME?.trim() || env.SMTP_FROM_NAME?.trim() || 'Wellfind Academic',
     supportEmail: env.MAIL_SUPPORT_EMAIL?.trim() || env.SMTP_FROM_EMAIL?.trim() || null,
-    teacherPortalUrl: (env.TEACHER_PORTAL_URL || env.TEACHER_LOGIN_URL || `${portalBase}/teacher`).replace(/\/+$/, ''),
-    adminPortalUrl: (env.ADMIN_PORTAL_URL || `${portalBase}/admin`).replace(/\/+$/, ''),
+    // The CRM's sign-in page lives at the site root and sends each user to their own
+    // portal after login. Mail buttons must therefore open the root, never
+    // `/teacher` or `/admin` (those 404 / bounce when the user is signed out), so the
+    // old TEACHER_PORTAL_URL / ADMIN_PORTAL_URL / TEACHER_LOGIN_URL overrides are ignored.
+    teacherPortalUrl: portalBase,
+    adminPortalUrl: portalBase,
     registrationFeeAmount: num(env.REGISTRATION_FEE_AMOUNT, 1000),
     registrationValidityDays: num(env.REGISTRATION_VALIDITY_DAYS, 365),
     expiryReminderDays: (env.REGISTRATION_EXPIRY_REMINDER_DAYS || '30,7')

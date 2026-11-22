@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 import * as webpush from 'web-push'
-import { MODULES, ROLE_DEFINITIONS, STAFF_ROLES, type Module } from '@/lib/permissions'
+import { MODULES, type Module } from '@/lib/permissions'
+import { notifyUsers, resolveStaffUserIds, type MobileNotification } from '@/services/notificationService'
 
 /**
  * Self-hosted browser push notifications (Web Push + VAPID). No third-party service.
@@ -15,6 +16,8 @@ export interface PushMessage {
   url?: string
   /** Same tag replaces an older notification instead of stacking. */
   tag?: string
+  /** When set, the same event is also saved as an in-app notification and sent to the user's mobile devices (FCM). */
+  mobile?: MobileNotification
 }
 
 let configured: boolean | null = null
@@ -69,12 +72,14 @@ async function sendToSubscriptions(payload: Payload, subs: Record<string, any>[]
   )
 }
 
-/** Push to every browser of the given users. */
+/** Notify the given users: in-app + mobile (when `mobile` is set), then every browser of theirs. */
 export async function pushToUsers(payload: Payload, userIds: (number | string | null | undefined)[], message: PushMessage): Promise<number> {
   try {
-    if (!isPushConfigured()) return 0
     const ids = [...new Set(userIds.filter((x): x is number | string => x !== null && x !== undefined && x !== ''))]
     if (ids.length === 0) return 0
+    // Mobile channel first and independent of web push: it works even when VAPID is not configured.
+    if (message.mobile) await notifyUsers(payload, ids, { ...message.mobile, title: message.title, body: message.body })
+    if (!isPushConfigured()) return 0
     const res = await (payload as any).find({ collection: 'push-subscriptions', where: { user: { in: ids } }, limit: 500, depth: 0, overrideAccess: true })
     await sendToSubscriptions(payload, res.docs, message)
     return res.docs.length
@@ -83,13 +88,10 @@ export async function pushToUsers(payload: Payload, userIds: (number | string | 
   }
 }
 
-/** Push to every active staff member whose role can read a module (super admins always included). */
+/** Notify every active staff member whose role can read a module (super admins always included). */
 export async function pushToStaff(payload: Payload, module: Module, message: PushMessage): Promise<number> {
   try {
-    if (!isPushConfigured()) return 0
-    const roles = ['super_admin', ...STAFF_ROLES.filter((r) => ROLE_DEFINITIONS[r].grants[module])]
-    const users = await (payload as any).find({ collection: 'users', where: { and: [{ role: { in: roles } }, { status: { equals: 'active' } }] }, limit: 200, depth: 0, overrideAccess: true })
-    return pushToUsers(payload, users.docs.map((u: any) => u.id), message)
+    return await pushToUsers(payload, await resolveStaffUserIds(payload, module), message)
   } catch {
     return 0
   }

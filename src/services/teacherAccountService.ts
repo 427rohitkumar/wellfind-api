@@ -91,7 +91,15 @@ export async function createTeacherAccount(
 
   const user = (await (payload as any).create({
     collection: 'users',
-    data: { email, password, role: 'teacher', status: 'active' },
+    data: {
+      email,
+      password,
+      role: 'teacher',
+      status: 'active',
+      fullName: enquiry.fullName ?? undefined,
+      phone: enquiry.mobileNumber ?? undefined,
+      gender: enquiry.gender ?? undefined,
+    },
     overrideAccess: true,
     // The dedicated welcome mail below carries the credentials; skip the generic one.
     context: { skipAccountMail: true },
