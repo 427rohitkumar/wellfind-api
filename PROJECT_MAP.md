@@ -1,7 +1,7 @@
 # Wellfind Academic API — Codebase Architecture & Project Map
 
-> **Notice for AI Coding Agents:**  
-> This file is the primary architectural map for `wellfind-api`. Read this file first before scanning the repository. It contains verified module responsibilities, routing tables, collection schemas, service contracts, and navigation rules. Modify application source code only after identifying the exact feature-to-file relationships documented below.
+> **Historical deep reference, partly outdated.** Do not read it by default. Use `AGENTS.md` here, `../docs/FEATURE_MAP.md` and `../docs/index/` first; trust code over this file.
+
 
 ---
 

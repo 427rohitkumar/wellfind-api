@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 
 import { permissionsFor } from '@/lib/permissions'
+import { extractRoles } from '@/lib/auth'
 
 /**
  * GET /api/auth/me
@@ -24,12 +25,14 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const u = user as any
+    const userRoles = extractRoles(u.roles, u.role)
 
     return Response.json({
       user: {
         id: u.id,
         email: u.email,
         role: u.role,
+        roles: userRoles,
         status: u.status,
         avatar: u.avatar ?? null,
         name: u.fullName ?? null,

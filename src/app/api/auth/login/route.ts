@@ -3,7 +3,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { getClientIP, isAdminRole, rateLimit } from '@/lib/auth'
+import { extractRoles, getClientIP, isAdminRole, rateLimit } from '@/lib/auth'
 
 /**
  * PostgreSQL error codes that indicate a temporary database lock issue.
@@ -109,6 +109,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const user = result.user as any
+    const userRoles = extractRoles(user.roles, user.role)
 
     // Check account status — suspended or inactive accounts cannot log in
     if (user.status === 'suspended' || user.status === 'inactive') {
@@ -125,6 +126,7 @@ export async function POST(request: Request): Promise<Response> {
         id: user.id,
         email: user.email,
         role: user.role,
+        roles: userRoles,
         status: user.status,
         avatar: (user as { avatar?: string | null }).avatar ?? null,
         name: (user as { fullName?: string | null }).fullName ?? null,

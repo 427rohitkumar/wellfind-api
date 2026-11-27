@@ -1,5 +1,17 @@
 import type { MailConfig } from '@/lib/mail/config'
-import { bigCode, button, details, heading, note, p, renderLayout, table, type Block } from '@/lib/mail/layout'
+import {
+  actionButtons,
+  bigCode,
+  button,
+  details,
+  heading,
+  note,
+  p,
+  renderLayout,
+  table,
+  warningBox,
+  type Block,
+} from '@/lib/mail/layout'
 
 export interface RenderedMail {
   subject: string
@@ -39,12 +51,14 @@ export const STATUS_COPY: Record<string, { label: string; subject: string; lines
   },
   shortlisted: {
     label: 'Shortlisted',
-    subject: 'Good news: you have been shortlisted',
+    subject: '🎉 Congratulations: You have been shortlisted',
     lines: [
       'Congratulations! You have been shortlisted for the next stage of our teacher selection.',
-      'The next step is the yearly registration fee. We will send you the payment details in a separate email.',
+      'Your teacher account has been created. Your login email and temporary password have been sent to your email address.',
+      'Important Security Note: Please reset your temporary password via the "Forgot Password" option on the sign-in page before logging in.',
+      'The next step is the yearly registration fee and profile verification, which you can complete directly in your portal.',
     ],
-    cta: 'Continue in your portal',
+    cta: 'Open Teacher Portal',
   },
   approved: {
     label: 'Approved',
@@ -97,20 +111,51 @@ export const templates: Record<string, MailTemplate<any>> = {
     label: 'Shortlisted + teacher login details',
     audience: 'teacher',
     sensitiveKeys: ['password'],
-    build: (d, cfg) => ({
-      subject: `Good news: you are shortlisted. Your ${cfg.brandName} login is ready`,
-      preheader: 'You are shortlisted. Sign in to continue',
-      blocks: [
-        heading('Congratulations, you are shortlisted'),
-        greet(d.name),
-        p('We are pleased to let you know that your application has been shortlisted for the next stage of our teacher selection.'),
-        p('We have also created your teacher account. You can sign in with the details below to follow your application, upload your documents and complete the registration step.'),
-        details([['Login email', d.email], ['Temporary password', d.password]], { mono: true }),
-        button('Sign in to your portal', d.loginUrl || cfg.teacherPortalUrl),
-        p('Next step: the yearly registration fee. We will send you the payment details in a separate email, and you will also find them in your portal.'),
-        note('For your security, please change this password after your first login: choose “Forgot password” on the sign-in page and set one of your own.'),
-      ],
-    }),
+    build: (d, cfg) => {
+      const portalUrl = (d.loginUrl || cfg.teacherPortalUrl || '').replace(/\/+$/, '')
+      const forgotPasswordUrl = `${portalUrl}/forgot-password`
+
+      return {
+        subject: `🎉 Congratulations! You are shortlisted - Your ${cfg.brandName} Teacher Login Details`,
+        preheader: `Congratulations! Your login details for ${cfg.brandName} are ready. Please reset your temporary password before signing in.`,
+        blocks: [
+          heading('🎉 Congratulations, You Are Shortlisted!'),
+          greet(d.name),
+          p(
+            `We are delighted to inform you that your teacher application has been shortlisted for the next stage of teacher selection at ${cfg.brandName}.`,
+          ),
+          p('Your official Teacher Partner dashboard account has been created. Please find your login credentials below:'),
+          details(
+            [
+              ['Teacher Portal URL', portalUrl],
+              ['Registered Login Email', d.email],
+              ['Temporary Password', d.password],
+              ['Account Role', 'Teacher Partner'],
+            ],
+            { mono: true },
+          ),
+          warningBox('Important Security Step: Reset Temporary Password (पासवर्ड रीसेट निर्देश)', [
+            '1. The password above is a system-generated TEMPORARY password.',
+            '2. For your account security, please RESET your password before logging in for the first time.',
+            '3. Click the "Reset Temporary Password (Forgot Password)" button below, enter your registered email (' +
+              d.email +
+              ') to receive an OTP verification code, set your new permanent password, and then sign in.',
+            'यह एक अस्थायी (Temporary) पासवर्ड है। सुरक्षा कारणों से कृपया लॉगिन करने से पहले "Forgot Password" पर क्लिक करके OTP द्वारा अपना नया स्थायी पासवर्ड बनाएं, फिर नए पासवर्ड से लॉगिन करें।',
+          ]),
+          actionButtons([
+            { label: '🔑 Reset Temporary Password (Forgot Password)', url: forgotPasswordUrl, primary: true },
+            { label: 'Sign In to Portal', url: portalUrl, primary: false },
+          ]),
+          p('Next Steps in the Selection Process:'),
+          p('1. Click "Reset Temporary Password" and set your own secure password via OTP verification.'),
+          p('2. Log in to your Teacher Dashboard to verify your profile details and upload required documents.'),
+          p('3. Complete the registration step to begin receiving student home-tuition allocations in your locality.'),
+          note(
+            `Need assistance? Reply directly to this email or contact our support team at ${cfg.supportEmail || cfg.fromEmail}. We are always happy to help!`,
+          ),
+        ],
+      }
+    },
   },
 
   password_reset_otp: {

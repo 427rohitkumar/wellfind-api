@@ -306,6 +306,14 @@ export const TeacherProfiles: CollectionConfig = {
         },
       ],
     },
+    {
+      name: 'payoutSettings',
+      label: 'Payout Settings',
+      type: 'json',
+      admin: {
+        description: 'Bank and UPI payout accounts configured by the teacher for salary/stipend disbursements.',
+      },
+    },
   ],
   timestamps: true,
 }

@@ -33,6 +33,34 @@ export const button = (label: string, url: string): Block => ({
   text: `${label}: ${url}`,
 })
 
+export const warningBox = (title: string, lines: string[] | string): Block => {
+  const lineArray = Array.isArray(lines) ? lines : [lines]
+  return {
+    html: `<div style="margin:16px 0 22px;padding:16px 18px;background:#FFFBEB;border:1.5px solid #FCD34D;border-left:5px solid #F59E0B;border-radius:8px;">
+      <div style="font-size:14px;font-weight:700;color:#92400E;margin-bottom:8px;">⚠️ ${esc(title)}</div>
+      ${lineArray.map((l) => `<p style="margin:0 0 6px;font-size:13px;line-height:1.55;color:#78350F;">${esc(l)}</p>`).join('')}
+    </div>`,
+    text: `[IMPORTANT WARNING]\n${title}\n${lineArray.join('\n')}`,
+  }
+}
+
+export const actionButtons = (buttons: Array<{ label: string; url: string; primary?: boolean }>): Block => ({
+  html: `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:14px 0 22px;">
+    <tr>
+      ${buttons
+        .map((b) => {
+          const bg = b.primary ? '#35D0BA' : '#101D36'
+          const fg = b.primary ? '#101D36' : '#FFFFFF'
+          return `<td style="border-radius:10px;background:${bg};padding:0;margin-right:12px;display:inline-block;">
+            <a href="${esc(b.url)}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:700;color:${fg};text-decoration:none;border-radius:10px;">${esc(b.label)}</a>
+          </td>`
+        })
+        .join('<td style="width:12px;display:inline-block;"></td>')}
+    </tr>
+  </table>`,
+  text: buttons.map((b) => `${b.label}: ${b.url}`).join('\n'),
+})
+
 /** Key/value rows, e.g. credentials or allocation details. */
 export const details = (rows: Array<[string, string]>, opts: { mono?: boolean } = {}): Block => ({
   html: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border:1px solid #D7E2EE;border-radius:10px;border-collapse:separate;">${rows

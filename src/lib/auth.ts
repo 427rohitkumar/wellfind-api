@@ -16,6 +16,7 @@ const OTP_RESEND_COOLDOWN_SECONDS = 60
 // Supported roles — additional roles can be added here without rewriting authorization logic
 export const SUPPORTED_ROLES = [
   'super_admin',
+  'course_manager',
   'operations_manager',
   'student_counselor',
   'teacher_coordinator',
@@ -23,6 +24,7 @@ export const SUPPORTED_ROLES = [
   'marketing_analyst',
   'support_executive',
   'teacher',
+  'student',
 ] as const
 export type SupportedRole = (typeof SUPPORTED_ROLES)[number]
 
@@ -127,6 +129,29 @@ export function isValidStatus(status: string): status is SupportedStatus {
  */
 export function isValidRole(role: string): role is SupportedRole {
   return SUPPORTED_ROLES.includes(role as SupportedRole)
+}
+
+/**
+ * Safely extracts an array of role strings from a user document or input.
+ */
+export function extractRoles(rawRoles: unknown, fallbackRole?: string | null): string[] {
+  const result: string[] = []
+  if (fallbackRole && typeof fallbackRole === 'string' && fallbackRole.trim()) {
+    result.push(fallbackRole.trim())
+  }
+  if (Array.isArray(rawRoles)) {
+    for (const item of rawRoles) {
+      if (typeof item === 'string' && item.trim()) {
+        result.push(item.trim())
+      } else if (item && typeof item === 'object') {
+        const val = (item as any).role || (item as any).value || (item as any).id
+        if (typeof val === 'string' && val.trim()) {
+          result.push(val.trim())
+        }
+      }
+    }
+  }
+  return Array.from(new Set(result))
 }
 
 /**

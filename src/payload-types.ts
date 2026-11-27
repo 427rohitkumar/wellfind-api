@@ -180,17 +180,36 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   /**
-   * Role determines access level within the system.
+   * Primary active role within the system.
    */
   role:
     | 'super_admin'
+    | 'course_manager'
     | 'operations_manager'
     | 'student_counselor'
     | 'teacher_coordinator'
     | 'finance_manager'
     | 'marketing_analyst'
     | 'support_executive'
-    | 'teacher';
+    | 'teacher'
+    | 'student';
+  /**
+   * Multi-role assignment. User can switch between these assigned roles.
+   */
+  roles?:
+    | (
+        | 'super_admin'
+        | 'course_manager'
+        | 'operations_manager'
+        | 'student_counselor'
+        | 'teacher_coordinator'
+        | 'finance_manager'
+        | 'marketing_analyst'
+        | 'support_executive'
+        | 'teacher'
+        | 'student'
+      )[]
+    | null;
   fullName?: string | null;
   phone?: string | null;
   gender?: ('male' | 'female' | 'other') | null;
@@ -726,6 +745,18 @@ export interface TeacherProfile {
   account?: {
     status?: ('active' | 'inactive' | 'suspended') | null;
   };
+  /**
+   * Bank and UPI payout accounts configured by the teacher for salary/stipend disbursements.
+   */
+  payoutSettings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -850,6 +881,18 @@ export interface TeacherEnquiry {
    * Linked approved teacher profile in the main teachers network.
    */
   teacherProfile?: (number | null) | TeacherProfile;
+  /**
+   * Bank and UPI payout accounts configured by the teacher for salary/stipend disbursements.
+   */
+  payoutSettings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -985,7 +1028,19 @@ export interface TeacherPayout {
   month: string;
   amount: number;
   paidAt: string;
+  paymentMethod?: ('upi' | 'razorpay' | 'bank_transfer' | 'other') | null;
   reference?: string | null;
+  utr?: string | null;
+  razorpayPayoutId?: string | null;
+  payoutDetails?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   note?: string | null;
   recordedBy?: (number | null) | User;
   updatedAt: string;
@@ -1446,6 +1501,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   role?: T;
+  roles?: T;
   fullName?: T;
   phone?: T;
   gender?: T;
@@ -1789,7 +1845,11 @@ export interface TeacherPayoutsSelect<T extends boolean = true> {
   month?: T;
   amount?: T;
   paidAt?: T;
+  paymentMethod?: T;
   reference?: T;
+  utr?: T;
+  razorpayPayoutId?: T;
+  payoutDetails?: T;
   note?: T;
   recordedBy?: T;
   updatedAt?: T;
@@ -1957,6 +2017,7 @@ export interface TeacherEnquiriesSelect<T extends boolean = true> {
   accountCreatedAt?: T;
   credentialsEmailStatus?: T;
   teacherProfile?: T;
+  payoutSettings?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2153,6 +2214,7 @@ export interface TeacherProfilesSelect<T extends boolean = true> {
     | {
         status?: T;
       };
+  payoutSettings?: T;
   updatedAt?: T;
   createdAt?: T;
 }

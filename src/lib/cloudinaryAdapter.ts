@@ -23,7 +23,7 @@ export function cloudinaryRootFolder(): string {
 }
 
 let configured = false
-function ensureConfigured() {
+export function ensureCloudinaryConfigured() {
   if (configured) return
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -32,6 +32,9 @@ function ensureConfigured() {
     secure: true,
   })
   configured = true
+}
+function ensureConfigured() {
+  ensureCloudinaryConfigured()
 }
 
 const isImage = (mime?: string | null, filename = '') => Boolean(mime?.startsWith('image/')) || /\.(png|jpe?g|webp|gif|avif)$/i.test(filename)
@@ -120,3 +123,32 @@ export function cloudinaryAdapter(options: { access: 'public' | 'private' }): Ad
     },
   })
 }
+
+/**
+ * Upload a Base64 data URL, Buffer, or remote URL directly to Cloudinary.
+ * Used for teacher payout QR codes, documents, etc.
+ */
+export async function uploadToCloudinary(
+  fileOrBase64: string | Buffer,
+  options?: { folder?: string; publicId?: string; resourceType?: 'image' | 'raw' | 'auto' }
+): Promise<{ secureUrl: string; publicId: string }> {
+  ensureConfigured()
+  const folder = options?.folder || `${cloudinaryRootFolder()}/payout-qr`
+  const uploadData =
+    typeof fileOrBase64 === 'string'
+      ? fileOrBase64
+      : `data:application/octet-stream;base64,${fileOrBase64.toString('base64')}`
+
+  const result = await cloudinary.uploader.upload(uploadData, {
+    folder,
+    public_id: options?.publicId,
+    resource_type: options?.resourceType || 'image',
+    overwrite: true,
+  })
+
+  return {
+    secureUrl: result.secure_url,
+    publicId: result.public_id,
+  }
+}
+

@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { getClientIP, isSuperAdminRole, rateLimit, SUPPORTED_ROLES } from '@/lib/auth'
+import { extractRoles, getClientIP, isSuperAdminRole, rateLimit, SUPPORTED_ROLES } from '@/lib/auth'
 
 /**
  * GET /api/auth/admin/users
@@ -32,10 +32,14 @@ export async function GET(request: Request): Promise<Response> {
     const search = url.searchParams.get('search')
 
     const where: any = {}
-    if (role) where.role = { equals: role }
-    if (status) where.status = { equals: status }
-    if (search) {
-      where.email = { contains: search }
+    if (role && role !== 'all') {
+      where.or = [{ role: { equals: role } }, { roles: { contains: role } }]
+    }
+    if (status && status !== 'all') {
+      where.status = { equals: status }
+    }
+    if (search && search.trim()) {
+      where.email = { contains: search.trim() }
     }
 
     const usersResult = await payload.find({
@@ -46,15 +50,21 @@ export async function GET(request: Request): Promise<Response> {
       sort: '-createdAt',
     })
 
+    const mappedUsers = usersResult.docs.map((doc: any) => ({
+      id: doc.id,
+      email: doc.email,
+      role: doc.role,
+      roles: extractRoles(doc.roles, doc.role),
+      fullName: doc.fullName || null,
+      phone: doc.phone || null,
+      status: doc.status,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    }))
+
     return Response.json({
-      users: usersResult.docs.map((doc: any) => ({
-        id: doc.id,
-        email: doc.email,
-        role: doc.role,
-        status: doc.status,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      })),
+      users: mappedUsers,
+      docs: mappedUsers,
       totalDocs: usersResult.totalDocs,
       totalPages: usersResult.totalPages,
       page: usersResult.page,
@@ -87,14 +97,14 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: 'Super admin access required.' }, { status: 403 })
     }
 
-    let body: { email?: string; password?: string; role?: string; status?: string }
+    let body: { email?: string; password?: string; role?: string; roles?: string[]; status?: string }
     try {
       body = await request.json()
     } catch {
       return Response.json({ error: 'Invalid request body.' }, { status: 400 })
     }
 
-    const { email, password, role, status } = body
+    const { email, password, role, roles, status } = body
 
     if (!email || typeof email !== 'string') {
       return Response.json({ error: 'Email is required.' }, { status: 400 })
@@ -117,9 +127,12 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: 'A user with this email already exists.' }, { status: 409 })
     }
 
-    // Validate role — only super_admin and teacher supported
+    // Validate role
     const validRoles = SUPPORTED_ROLES
     const userRole = role && validRoles.includes(role as any) ? (role as typeof validRoles[number]) : 'teacher'
+    const validatedRoles = Array.isArray(roles) && roles.length > 0
+      ? roles.filter((r) => validRoles.includes(r as any))
+      : [userRole]
 
     // Validate status — active, blocked, suspended
     const validStatuses = ['active', 'blocked', 'suspended'] as const
@@ -132,6 +145,7 @@ export async function POST(request: Request): Promise<Response> {
         email,
         password,
         role: userRole,
+        roles: validatedRoles,
         status: userStatus,
       },
     })
@@ -142,6 +156,7 @@ export async function POST(request: Request): Promise<Response> {
         id: newUser.id,
         email: newUser.email,
         role: newUser.role,
+        roles: newUser.roles || [newUser.role],
         status: newUser.status,
         createdAt: newUser.createdAt,
       },

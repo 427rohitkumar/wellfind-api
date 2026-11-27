@@ -1,53 +1,41 @@
-# Efficient Agent Execution Rules
+# wellfind-api: agent guide
 
-## Objective
+Backend and database for Wellfind Academic. Payload 3.92 on Next.js 16, PostgreSQL, TypeScript, pnpm. Consumed by `../wellfind-crm`, `../wellfind-app`, `../wellfind-client`.
 
-Complete development tasks with minimum unnecessary work while maintaining correctness, security, and code quality.
+Workspace map: `../AGENTS.md`. Find files: Grep `../docs/index/api.md`; by feature: `../docs/FEATURE_MAP.md`.
 
-## 1. Understand Before Acting
+## Danger
 
-- Identify the exact requirement and expected outcome.
-- Inspect only the files and dependencies relevant to the task.
-- Reuse existing conversation context, repository knowledge, and previous findings.
-- Do not rediscover information already established unless verification is necessary.
+- `.env` points to a **remote database**. Ask before `pnpm dev` (Payload may push schema changes), `pnpm migrate`, `seed:*` or anything in `scripts/` (some delete data).
+- Never read or commit `.env*` (except `*.example`), `backups/`, `teacher-documents/`, `user-files/`.
 
-## 2. Minimal Changes
+## Layout
 
-- Make the smallest complete and correct change.
-- Do not refactor unrelated code, rename unrelated variables, or modify unrelated files.
-- Preserve existing architecture, conventions, and behavior outside the requested scope.
-- Do not introduce new dependencies unless required.
+`src/app/api/**/route.ts` (thin) -> `src/services/` (logic) -> `src/collections/` (schema, access, hooks). Shared: `src/lib/`. Config: `src/payload.config.ts`, CORS in `src/proxy.ts`.
 
-## 3. No Repeated Work
+## Conventions
 
-- Do not repeatedly read, search, analyze, or edit the same code without a concrete reason.
-- Reuse previous command results and inspection findings when still valid.
-- Avoid repeating failed commands without changing the underlying approach.
-- Do not create multiple alternative implementations when one suitable solution is clear.
+- Guard every route (`requireActiveUser`, `requireSuperAdmin`, `requireTeacher`); respond with `apiSuccess` / `apiError` / `handleRouteError` from `@/lib/api`. Services throw `ServiceError`.
+- Copy the nearest existing route and service of the same area.
+- New admin path -> add it to `moduleForPath` in `src/lib/permissions.ts`.
+- Schema change: edit collection -> `pnpm generate:types` -> `pnpm migrate:create` -> review. Applying needs owner approval.
+- Never edit `payload-types.ts`, `payload-generated-schema.ts` or migration JSON; never read them whole.
+- Changed request or response -> update `API-DOC/<topic>.md` and every caller.
 
-## 4. Efficient Verification
+## Commands
 
-- Run the smallest relevant verification first.
-- Do not run full builds, repository-wide linting, or complete test suites for trivial changes unless necessary.
-- Never skip verification when correctness or risk requires it.
-- Never claim a check passed unless it actually ran and succeeded.
+```bash
+pnpm dev -p 3004                # clients expect port 3004 (remote DB, see Danger)
+npx tsc --noEmit                # type check
+npx vitest run --config ./vitest.config.mts tests/int/<file>.int.spec.ts
+pnpm test:int                   # all; needs local test Postgres and .env.test
+```
 
-## 5. Tool and Terminal Discipline
+Tests only accept a local database ending in `_test` (`.env.test.example`). Lint is currently broken (`../docs/KNOWN_ISSUES.md` K-4).
 
-- Avoid unnecessary terminal commands, directory listings, dependency installation, and repository-wide scans.
-- Do not run long-running commands when a targeted check is sufficient.
-- Do not wait for unrelated background processes.
-- Use parallel operations only when independent and safe.
+## Working rules
 
-## 6. Clear Completion Criteria
-
-- Stop when the requested change is complete and adequately verified.
-- Do not continue exploring unrelated improvements.
-- Report modified files, verification performed, and any unresolved issues concisely.
-
-## Priority
-
-Correctness and security first, minimal scope second, execution speed third. Never sacrifice required verification merely to finish faster.
+Smallest complete change; no unrelated refactors or new dependencies; run the smallest relevant check and report honestly. Then follow "definition of done" in `../AGENTS.md`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

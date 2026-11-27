@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-import { isSuperAdminRole, SUPPORTED_ROLES } from '@/lib/auth'
+import { extractRoles, isSuperAdminRole, SUPPORTED_ROLES } from '@/lib/auth'
 
 /**
  * PATCH /api/auth/admin/users/:id
@@ -49,19 +49,23 @@ export async function PATCH(
     // Prevent deleting/demoting the last active super_admin is handled in delete/block/suspend routes
     // For PATCH, prevent changing the last active super_admin's role or status away from active/super_admin
 
-    let body: { email?: string; role?: string; status?: string }
+    let body: { email?: string; role?: string; roles?: string[]; status?: string }
     try {
       body = await request.json()
     } catch {
       return Response.json({ error: 'Invalid request body.' }, { status: 400 })
     }
 
-    const { email, role, status } = body
+    const { email, role, roles, status } = body
 
     const validRoles: readonly string[] = SUPPORTED_ROLES
     const validStatuses = ['active', 'blocked', 'suspended']
 
     const updateData: Record<string, unknown> = {}
+
+    if (roles !== undefined && Array.isArray(roles)) {
+      updateData.roles = roles.filter((r) => validRoles.includes(r as any))
+    }
 
     if (email !== undefined) {
       if (typeof email !== 'string') {
@@ -153,6 +157,7 @@ export async function PATCH(
         id: updatedUser.id,
         email: updatedUser.email,
         role: updatedUser.role,
+        roles: extractRoles(updatedUser.roles, updatedUser.role),
         status: updatedUser.status,
         updatedAt: updatedUser.updatedAt,
       },

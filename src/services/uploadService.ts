@@ -1,8 +1,22 @@
 import type { Payload } from 'payload'
+import { v2 as cloudinary } from 'cloudinary'
 import type { AuthUserRecord } from '@/lib/api'
 import { ServiceError } from '@/services/studentService'
 import { findTeacherProfileForUser } from '@/services/teacherAllocationService'
 import { canRead } from '@/lib/permissions'
+import { cloudinaryRootFolder } from '@/lib/cloudinaryAdapter'
+
+let cloudinaryConfigured = false
+function ensureConfiguredCloudinary() {
+  if (cloudinaryConfigured) return
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
+  })
+  cloudinaryConfigured = true
+}
 
 /**
  * File & image uploads for signed-in users (admin and teacher), stored through Payload
@@ -149,4 +163,77 @@ export async function deleteOwnDocument(payload: Payload, user: AuthUserRecord, 
   if (user.role !== 'super_admin' && ownerId !== user.id) throw new ServiceError('File not found.', 404)
   await (payload as any).delete({ collection: 'user-files', id, overrideAccess: true })
   return { id }
+}
+
+export const MAX_THUMBNAIL_BYTES = 10 * 1024 * 1024
+export const MAX_VIDEO_BYTES = 60 * 1024 * 1024
+
+export async function uploadCourseThumbnail(formData: FormData) {
+  const value = formData.get('file')
+  if (!(value instanceof File) || value.size === 0) throw bad('file', 'Choose an image file to upload.')
+  if (value.size > MAX_THUMBNAIL_BYTES) throw bad('file', `The thumbnail image must be ${MAX_THUMBNAIL_BYTES / 1024 / 1024} MB or smaller.`)
+
+  const buffer = Buffer.from(await value.arrayBuffer())
+  const kind = sniffKind(buffer)
+  if (!kind || kind === 'pdf') {
+    throw bad('file', 'Thumbnails must be a JPG, PNG or WebP image.')
+  }
+
+  ensureConfiguredCloudinary()
+  const folder = `${cloudinaryRootFolder()}/courses/thumbnails`
+  const result = await new Promise<any>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'image',
+        overwrite: true,
+      },
+      (err, res) => (err ? reject(new ServiceError(err.message || 'Image upload failed.', 400)) : resolve(res))
+    )
+    stream.end(buffer)
+  })
+
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+    width: result.width,
+    height: result.height,
+    format: result.format,
+    size: result.bytes,
+  }
+}
+
+export async function uploadCourseVideo(formData: FormData) {
+  const value = formData.get('file')
+  if (!(value instanceof File) || value.size === 0) throw bad('file', 'Choose a video file to upload.')
+  if (value.size > MAX_VIDEO_BYTES) throw bad('file', `The video must be ${MAX_VIDEO_BYTES / 1024 / 1024} MB or smaller.`)
+
+  const buffer = Buffer.from(await value.arrayBuffer())
+
+  ensureConfiguredCloudinary()
+  const folder = `${cloudinaryRootFolder()}/courses/videos`
+  const result = await new Promise<any>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'video',
+        overwrite: true,
+      },
+      (err, res) => (err ? reject(new ServiceError(err.message || 'Video upload failed.', 400)) : resolve(res))
+    )
+    stream.end(buffer)
+  })
+
+  const durationSec = result.duration ? Math.round(result.duration) : 0
+
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+    duration: durationSec,
+    format: result.format,
+    size: result.bytes,
+    resourceType: 'video',
+    width: result.width,
+    height: result.height,
+  }
 }

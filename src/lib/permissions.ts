@@ -22,6 +22,7 @@ export const MODULES = [
   'payments',
   'analytics',
   'users',
+  'courses',
 ] as const
 export type Module = (typeof MODULES)[number]
 export type Level = 'read' | 'write'
@@ -38,9 +39,11 @@ export const MODULE_LABELS: Record<Module, string> = {
   payments: 'Payments & payouts',
   analytics: 'Google Analytics',
   users: 'User management',
+  courses: 'Course Management',
 }
 
 export const STAFF_ROLES = [
+  'course_manager',
   'operations_manager',
   'student_counselor',
   'teacher_coordinator',
@@ -53,6 +56,11 @@ export type StaffRole = (typeof STAFF_ROLES)[number]
 type Grants = Partial<Record<Module, Level>>
 
 export const ROLE_DEFINITIONS: Record<StaffRole, { label: string; summary: string; grants: Grants }> = {
+  course_manager: {
+    label: 'Course Manager',
+    summary: 'Manages online courses, roadmaps, curriculum categories, video materials, quizzes and course analytics. Dedicated studio workspace.',
+    grants: { dashboard: 'write', courses: 'write' },
+  },
   operations_manager: {
     label: 'Operations Manager',
     summary: 'Runs day-to-day operations: enquiries, students, teachers, tests, allocation and mail. Can view analytics. No payments or user management.',
@@ -141,6 +149,7 @@ export function moduleForPath(pathname: string): Module | Module[] {
   if (starts('/api/students')) return 'students'
   if (starts('/api/teacher-allocations')) return 'allocation'
   if (starts('/api/teacher-enquiries')) return 'teacher_inquiries'
+  if (starts('/api/courses') || starts('/api/admin/courses')) return 'courses'
   if (starts('/api/teachers')) return 'teachers'
   return 'users'
 }

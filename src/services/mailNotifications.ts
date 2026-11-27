@@ -160,7 +160,7 @@ export async function notifyTeacherAllocated(payload: Payload, allocationId: num
   }
 }
 
-const ROLE_LABELS: Record<string, string> = { super_admin: 'an administrator', operations_manager: 'an Operations Manager', student_counselor: 'a Student Counselor', teacher_coordinator: 'a Teacher Coordinator', finance_manager: 'a Finance Manager', marketing_analyst: 'a Marketing Analyst', support_executive: 'a Support Executive', teacher: 'a teacher' }
+const ROLE_LABELS: Record<string, string> = { super_admin: 'an administrator', course_manager: 'a Course Manager', operations_manager: 'an Operations Manager', student_counselor: 'a Student Counselor', teacher_coordinator: 'a Teacher Coordinator', finance_manager: 'a Finance Manager', marketing_analyst: 'a Marketing Analyst', support_executive: 'a Support Executive', teacher: 'a teacher', student: 'a student' }
 
 export async function notifyAccountCreated(payload: Payload, user: Record<string, any>): Promise<void> {
   if (!user?.email) return

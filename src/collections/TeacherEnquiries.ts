@@ -162,6 +162,7 @@ export const TeacherEnquiries: CollectionConfig = {
       type: 'text',
       required: true,
       maxLength: 20,
+      index: true,
       validate: (value: unknown): string | true => {
         if (!isValidTeacherPhoneNumber(value)) {
           return 'Enter a valid mobile number (7–15 digits, optional leading +).'
@@ -176,6 +177,7 @@ export const TeacherEnquiries: CollectionConfig = {
       name: 'email',
       label: 'Email address',
       type: 'email',
+      index: true,
       admin: {
         description: 'Optional email address.',
       },
@@ -236,6 +238,7 @@ export const TeacherEnquiries: CollectionConfig = {
       type: 'text',
       required: true,
       maxLength: 200,
+      index: true,
       admin: {
         description: 'Area where the teacher can take classes.',
       },
@@ -320,6 +323,7 @@ export const TeacherEnquiries: CollectionConfig = {
       type: 'select',
       options: [...applicationStatuses],
       defaultValue: 'new',
+      index: true,
       access: {
         create: ({ req: { user } }) => canManageTeacherEnquiries(user),
         update: ({ req: { user } }) => canManageTeacherEnquiries(user),
@@ -501,6 +505,14 @@ export const TeacherEnquiries: CollectionConfig = {
       },
       admin: {
         description: 'Linked approved teacher profile in the main teachers network.',
+      },
+    },
+    {
+      name: 'payoutSettings',
+      label: 'Payout Settings',
+      type: 'json',
+      admin: {
+        description: 'Bank and UPI payout accounts configured by the teacher for salary/stipend disbursements.',
       },
     },
   ],
@@ -844,6 +856,7 @@ export async function syncApprovedTeacherProfile(
       account: {
         status: 'active',
       },
+      payoutSettings: doc.payoutSettings || null,
     },
     overrideAccess: true,
     req,

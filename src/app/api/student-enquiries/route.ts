@@ -147,6 +147,7 @@ export async function GET(request: Request): Promise<Response> {
       page,
       sort,
       where,
+      depth: 0,
     })
 
     const docs = (result.docs as unknown[]).map((doc) =>
