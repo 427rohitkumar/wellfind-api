@@ -1,0 +1,15 @@
+services:
+  wellfind-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wellfind-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3004:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./media:/app/media
+      - ./teacher-documents:/app/teacher-documents
+      - ./user-files:/app/user-files
