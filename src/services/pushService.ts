@@ -61,7 +61,11 @@ async function sendToSubscriptions(payload: Payload, subs: Record<string, any>[]
   await Promise.allSettled(
     subs.map(async (s) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 60 * 60 * 24 })
+        await webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          body,
+          { TTL: 60 * 60 * 24, urgency: 'high' },
+        )
       } catch (err: any) {
         // The browser revoked or lost the subscription: forget it.
         if (err?.statusCode === 404 || err?.statusCode === 410) {
@@ -72,17 +76,25 @@ async function sendToSubscriptions(payload: Payload, subs: Record<string, any>[]
   )
 }
 
-/** Notify the given users: in-app + mobile (when `mobile` is set), then every browser of theirs. */
+/** Notify the given users: in-app + mobile (when `mobile` is set) and every browser of theirs in parallel. */
 export async function pushToUsers(payload: Payload, userIds: (number | string | null | undefined)[], message: PushMessage): Promise<number> {
   try {
     const ids = [...new Set(userIds.filter((x): x is number | string => x !== null && x !== undefined && x !== ''))]
     if (ids.length === 0) return 0
-    // Mobile channel first and independent of web push: it works even when VAPID is not configured.
-    if (message.mobile) await notifyUsers(payload, ids, { ...message.mobile, title: message.title, body: message.body })
-    if (!isPushConfigured()) return 0
-    const res = await (payload as any).find({ collection: 'push-subscriptions', where: { user: { in: ids } }, limit: 500, depth: 0, overrideAccess: true })
-    await sendToSubscriptions(payload, res.docs, message)
-    return res.docs.length
+
+    const mobileTask = message.mobile
+      ? notifyUsers(payload, ids, { ...message.mobile, title: message.title, body: message.body })
+      : Promise.resolve(0)
+
+    const webTask = (async () => {
+      if (!isPushConfigured()) return 0
+      const res = await (payload as any).find({ collection: 'push-subscriptions', where: { user: { in: ids } }, limit: 500, depth: 0, overrideAccess: true })
+      await sendToSubscriptions(payload, res.docs, message)
+      return res.docs.length
+    })()
+
+    const [, webResult] = await Promise.allSettled([mobileTask, webTask])
+    return webResult.status === 'fulfilled' ? webResult.value : 0
   } catch {
     return 0
   }

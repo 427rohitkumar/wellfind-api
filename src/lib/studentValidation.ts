@@ -23,6 +23,14 @@ export const CONVERTIBLE_ENQUIRY_STATUSES: readonly EnquiryStatus[] = [
 export const enquiryTestModes = ['physical', 'virtual', 'digital'] as const
 export type EnquiryTestMode = (typeof enquiryTestModes)[number]
 
+/** Student enquiry intent: direct tutor search vs assessment test + tutor assignment. */
+export const enquiryIntents = ['tutor_only', 'test_and_tutor'] as const
+export type EnquiryIntent = (typeof enquiryIntents)[number]
+
+/** Preferred test mode selected by the parent/student on the public site. */
+export const preferredTestModes = ['digital', 'physical'] as const
+export type PreferredTestMode = (typeof preferredTestModes)[number]
+
 export const enquirySources = [
   'website',
   'phone_call',
@@ -79,6 +87,22 @@ export function isValidEnquirySource(value: unknown): value is EnquirySource {
   return (
     typeof value === 'string' &&
     enquirySources.includes(value as EnquirySource)
+  )
+}
+
+export function isValidEnquiryIntent(value: unknown): value is EnquiryIntent {
+  return (
+    typeof value === 'string' &&
+    enquiryIntents.includes(value as EnquiryIntent)
+  )
+}
+
+export function isValidPreferredTestMode(
+  value: unknown,
+): value is PreferredTestMode {
+  return (
+    typeof value === 'string' &&
+    preferredTestModes.includes(value as PreferredTestMode)
   )
 }
 
@@ -268,6 +292,8 @@ export interface ValidatedEnquiryPayload {
   phoneNumber: string
   agreedToPolicy: boolean
   enquirySource: EnquirySource
+  inquiryIntent: EnquiryIntent
+  preferredTestMode?: PreferredTestMode
   customSubject?: string
   customLocality?: string
   additionalNotes?: string
@@ -307,6 +333,8 @@ export function validateAndBuildEnquiryData(
     additionalNotes,
     agreedToPolicy,
     enquirySource,
+    inquiryIntent,
+    preferredTestMode,
   } = body
 
   const requiredStringLimits: [string, unknown, number][] = [
@@ -403,6 +431,34 @@ export function validateAndBuildEnquiryData(
     resolvedSource = options.forceWebsiteSource ? 'website' : enquirySource
   }
 
+  let resolvedIntent: EnquiryIntent = 'tutor_only'
+  if (inquiryIntent !== undefined && inquiryIntent !== null && inquiryIntent !== '') {
+    if (!isValidEnquiryIntent(inquiryIntent)) {
+      return {
+        ok: false,
+        field: 'inquiryIntent',
+        message: `Invalid inquiryIntent. Allowed values: ${enquiryIntents.join(', ')}.`,
+      }
+    }
+    resolvedIntent = inquiryIntent
+  }
+
+  let resolvedPreferredTestMode: PreferredTestMode | undefined
+  if (
+    preferredTestMode !== undefined &&
+    preferredTestMode !== null &&
+    preferredTestMode !== ''
+  ) {
+    if (!isValidPreferredTestMode(preferredTestMode)) {
+      return {
+        ok: false,
+        field: 'preferredTestMode',
+        message: `Invalid preferredTestMode. Allowed values: ${preferredTestModes.join(', ')}.`,
+      }
+    }
+    resolvedPreferredTestMode = preferredTestMode
+  }
+
   const data: ValidatedEnquiryPayload = {
     studentClass: (studentClass as string).trim(),
     subjects: parsedSubjects.rows,
@@ -413,6 +469,11 @@ export function validateAndBuildEnquiryData(
     phoneNumber: normalizePhoneNumber(phoneNumber as string),
     agreedToPolicy: true,
     enquirySource: resolvedSource,
+    inquiryIntent: resolvedIntent,
+  }
+
+  if (resolvedPreferredTestMode) {
+    data.preferredTestMode = resolvedPreferredTestMode
   }
 
   if (typeof customSubject === 'string' && customSubject.trim().length > 0) {

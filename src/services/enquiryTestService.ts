@@ -28,11 +28,33 @@ export function levelOf(score: unknown): 'excellent' | 'good' | 'average' | 'nee
 
 const bad = (field: string, message: string) => new ServiceError(message, 400, [{ field, message }])
 
+const extraScoresOf = (report: Record<string, any>) =>
+  (Array.isArray(report.extraScores) ? report.extraScores : []).map((x: Record<string, any>) => ({ label: x.label as string, score: x.score as number, level: levelOf(x.score) }))
+
+function serializeReport(report: Record<string, any>) {
+  const entered = ['iqScore', 'creativityScore', 'academicScore'].some((k) => typeof report[k] === 'number') || extraScoresOf(report).length > 0
+  if (!entered) return null
+  return {
+    iqScore: report.iqScore ?? null,
+    creativityScore: report.creativityScore ?? null,
+    academicScore: report.academicScore ?? null,
+    iqLevel: levelOf(report.iqScore),
+    creativityLevel: levelOf(report.creativityScore),
+    academicLevel: levelOf(report.academicScore),
+    extraScores: extraScoresOf(report),
+    strengths: report.strengths ?? null,
+    improvementAreas: report.improvementAreas ?? null,
+    recommendation: report.recommendation ?? null,
+    hoursPerWeek: report.hoursPerWeek ?? null,
+    testerNotes: report.testerNotes ?? null,
+    reportedAt: report.reportedAt ?? null,
+  }
+}
+
 export function serializeTest(doc: Record<string, any>) {
   const enquiry = doc.studentEnquiry && typeof doc.studentEnquiry === 'object' ? doc.studentEnquiry : null
   const tester = doc.tester && typeof doc.tester === 'object' ? doc.tester : null
   const report = (doc.report ?? {}) as Record<string, any>
-  const hasReport = typeof report.iqScore === 'number' || typeof report.academicScore === 'number' || typeof report.creativityScore === 'number'
   return {
     id: doc.id,
     mode: doc.mode,
@@ -62,22 +84,7 @@ export function serializeTest(doc: Record<string, any>) {
     venue: doc.venue ?? null,
     schedulingNote: doc.schedulingNote ?? null,
     conductedAt: doc.conductedAt ?? null,
-    report: hasReport
-      ? {
-          iqScore: report.iqScore ?? null,
-          creativityScore: report.creativityScore ?? null,
-          academicScore: report.academicScore ?? null,
-          iqLevel: levelOf(report.iqScore),
-          creativityLevel: levelOf(report.creativityScore),
-          academicLevel: levelOf(report.academicScore),
-          strengths: report.strengths ?? null,
-          improvementAreas: report.improvementAreas ?? null,
-          recommendation: report.recommendation ?? null,
-          hoursPerWeek: report.hoursPerWeek ?? null,
-          testerNotes: report.testerNotes ?? null,
-          reportedAt: report.reportedAt ?? null,
-        }
-      : null,
+    report: serializeReport(report),
     history: Array.isArray(doc.history) ? doc.history.map((h: Record<string, any>) => ({ type: h.type, at: h.at, note: h.note ?? null })) : [],
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -126,12 +133,30 @@ export async function listTests(payload: Payload, sp: URLSearchParams) {
 
   const count = (where: Record<string, any>) =>
     (payload as any).count({ collection: 'enquiry-tests', where, overrideAccess: true }).then((r: any) => r.totalDocs as number)
-  const [requested, awaitingPayment, scheduled, conducted, reportReady] = await Promise.all([
+  const [
+    requested,
+    awaitingPayment,
+    scheduled,
+    conducted,
+    reportReady,
+    onlineCount,
+    offlineCount,
+    skippedCount,
+  ] = await Promise.all([
     count({ status: { equals: 'requested' } }),
     count({ and: [{ 'payment.status': { equals: 'pending' } }, { status: { not_in: ['cancelled', 'report_ready'] } }] }),
     count({ status: { equals: 'scheduled' } }),
     count({ status: { equals: 'conducted' } }),
     count({ status: { equals: 'report_ready' } }),
+    count({ and: [{ mode: { equals: 'digital' } }, { status: { not_equals: 'cancelled' } }] }),
+    count({ and: [{ mode: { equals: 'physical' } }, { status: { not_equals: 'cancelled' } }] }),
+    (payload as any)
+      .count({
+        collection: 'student-enquiries',
+        where: { testSkipped: { equals: true } },
+        overrideAccess: true,
+      })
+      .then((r: any) => r.totalDocs as number),
   ])
 
   return {
@@ -143,7 +168,16 @@ export async function listTests(payload: Payload, sp: URLSearchParams) {
     hasNextPage: res.hasNextPage,
     hasPrevPage: res.hasPrevPage,
     fees: getTestFees(),
-    counts: { requested, awaitingPayment, scheduled, conducted, reportReady },
+    counts: {
+      requested,
+      awaitingPayment,
+      scheduled,
+      conducted,
+      reportReady,
+      onlineCount,
+      offlineCount,
+      skippedCount,
+    },
   }
 }
 
@@ -216,7 +250,26 @@ function parseReport(raw: unknown, existing: Record<string, any>) {
     if (h !== null && (typeof h !== 'number' || h < 0 || h > 40)) throw bad('hoursPerWeek', 'hoursPerWeek must be between 0 and 40.')
     out.hoursPerWeek = h
   }
+  if (r.extraScores !== undefined) {
+    const list = r.extraScores
+    if (!Array.isArray(list) || list.length > 10) throw bad('extraScores', 'Add at most 10 other scores.')
+    out.extraScores = list.map((x: any, i) => {
+      const label = typeof x?.label === 'string' ? x.label.trim() : ''
+      if (!label || label.length > 60) throw bad(`extraScores.${i}.label`, 'Name each score (up to 60 characters).')
+      if (typeof x.score !== 'number' || !Number.isFinite(x.score) || x.score < 0 || x.score > 100) throw bad(`extraScores.${i}.score`, `${label} must be a number from 0 to 100.`)
+      return { label, score: Math.round(x.score * 10) / 10 }
+    })
+  }
   return out
+}
+
+/** A report can be finished only with the three main scores and guidance for the teacher. */
+function finishedReport(r: Record<string, any>) {
+  for (const k of ['iqScore', 'creativityScore', 'academicScore']) {
+    if (typeof r[k] !== 'number') throw bad(k, 'Enter all three scores before finishing the report.')
+  }
+  if (!String(r.recommendation || '').trim()) throw bad('recommendation', 'Add guidance for the teacher.')
+  return { ...r, reportedAt: new Date().toISOString() }
 }
 
 /** One update endpoint for everything an admin does on a test; each step is validated server-side. */
@@ -256,6 +309,11 @@ export async function updateTest(payload: Payload, id: number, body: Record<stri
     events.push(note(`payment_${body.paymentStatus}`, admin))
   }
 
+  const nextMode = (data.mode ?? doc.mode) as TestMode
+  if (nextMode === 'physical' && (body.report !== undefined || body.status === 'report_ready')) {
+    throw new ServiceError('The result of a physical test is entered by the allocated teacher.', 409, [{ field: 'report', message: 'Teacher entry only.' }])
+  }
+
   // Tester, schedule, venue.
   if (body.tester !== undefined) {
     if (body.tester === null) data.tester = null
@@ -264,6 +322,7 @@ export async function updateTest(payload: Payload, id: number, body: Record<stri
       if (!tid) throw bad('tester', 'tester must be a user id.')
       const user = await (payload as any).findByID({ collection: 'users', id: tid, depth: 0, disableErrors: true, overrideAccess: true })
       if (!user || user.status !== 'active') throw bad('tester', 'The tester must be an active user.')
+      if (nextMode === 'physical' && user.role !== 'teacher') throw bad('tester', 'A physical test is taken by a teacher. Choose a teacher account.')
       data.tester = tid
       events.push(note('tester_assigned', admin, user.email))
     }
@@ -294,18 +353,14 @@ export async function updateTest(payload: Payload, id: number, body: Record<stri
         if (!payOk) throw new ServiceError('Payment must be paid or waived before the test is scheduled.', 409, [{ field: 'paymentStatus', message: 'Payment is pending.' }])
         if (!merged.scheduledAt) throw bad('scheduledAt', 'Choose a date and time.')
         if (mode === 'physical') {
-          if (!extractRelationId(merged.tester)) throw bad('tester', 'Allocate a tester for a physical test.')
+          const testerId = extractRelationId(merged.tester)
+          if (!testerId) throw bad('tester', 'Allocate a teacher for a physical test.')
+          const tester = await (payload as any).findByID({ collection: 'users', id: testerId, depth: 0, disableErrors: true, overrideAccess: true })
+          if (!tester || tester.role !== 'teacher' || tester.status !== 'active') throw bad('tester', 'A physical test is taken by an active teacher.')
           if (!String(merged.venue || '').trim()) throw bad('venue', 'Add the address where the test will be held.')
         }
       }
-      if (next === 'report_ready') {
-        const r = (merged.report ?? {}) as Record<string, any>
-        for (const k of ['iqScore', 'creativityScore', 'academicScore']) {
-          if (typeof r[k] !== 'number') throw bad(k, 'Enter all three scores before finishing the report.')
-        }
-        if (!String(r.recommendation || '').trim()) throw bad('recommendation', 'Add guidance for the teacher.')
-        data.report = { ...r, reportedAt: new Date().toISOString() }
-      }
+      if (next === 'report_ready') data.report = finishedReport((merged.report ?? {}) as Record<string, any>)
       if (next === 'conducted') data.conductedAt = new Date().toISOString()
       data.status = next
       events.push(note(next, admin))
@@ -331,11 +386,89 @@ export async function updateTest(payload: Payload, id: number, body: Record<stri
   return getTest(payload, id)
 }
 
-/** Active people who can conduct a test (administrators and teachers). */
+/* ---------------------------- Allocated teacher ---------------------------- */
+
+/** The teacher sees booked physical tests allocated to them. */
+const TEACHER_VISIBLE: TestStatus[] = ['scheduled', 'conducted', 'report_ready']
+
+function serializeForTester(doc: Record<string, any>) {
+  const t = serializeTest(doc)
+  const open = t.status !== 'report_ready'
+  const s = t.student
+  return {
+    id: t.id,
+    mode: t.mode,
+    status: t.status,
+    scheduledAt: t.scheduledAt,
+    venue: t.venue,
+    schedulingNote: t.schedulingNote,
+    conductedAt: t.conductedAt,
+    canEnterResult: open,
+    student: s
+      ? {
+          name: s.name,
+          studentClass: s.studentClass,
+          subjects: s.subjects,
+          locality: s.locality,
+          preferredTiming: s.preferredTiming,
+          // The phone number is needed only until the result is in.
+          phoneNumber: open ? s.phoneNumber : null,
+        }
+      : null,
+    report: t.report,
+  }
+}
+
+/** Anything not allocated to this teacher looks like "not found". */
+async function ownTest(payload: Payload, user: AuthUserRecord, id: number) {
+  const doc = await load(payload, id)
+  if (extractRelationId(doc.tester) !== user.id || doc.mode !== 'physical' || !TEACHER_VISIBLE.includes(doc.status as TestStatus)) {
+    throw new ServiceError('Test not found.', 404)
+  }
+  return doc
+}
+
+export async function listTesterTests(payload: Payload, user: AuthUserRecord) {
+  const res = await (payload as any).find({
+    collection: 'enquiry-tests',
+    where: { and: [{ tester: { equals: user.id } }, { mode: { equals: 'physical' } }, { status: { in: TEACHER_VISIBLE } }] },
+    sort: '-scheduledAt',
+    limit: 100,
+    depth: 1,
+    overrideAccess: true,
+  })
+  return { docs: (res.docs as Record<string, any>[]).map(serializeForTester) }
+}
+
+export async function getTesterTest(payload: Payload, user: AuthUserRecord, id: number) {
+  return serializeForTester(await ownTest(payload, user, id))
+}
+
+/**
+ * The allocated teacher records the visit: `{ report?, submit? }`. Saving keeps a draft and marks the
+ * test conducted; `submit: true` finishes the report, after which it can no longer be changed.
+ */
+export async function saveTesterResult(payload: Payload, user: AuthUserRecord, id: number, body: Record<string, unknown>) {
+  const doc = await ownTest(payload, user, id)
+  if (doc.status === 'report_ready') throw new ServiceError('This result is already submitted and can no longer be changed.', 409)
+  if (body.submit !== undefined && typeof body.submit !== 'boolean') throw bad('submit', 'submit must be true or false.')
+  if (body.report === undefined && body.submit !== true) throw bad('report', 'Enter the result.')
+
+  const report = (body.report === undefined ? (doc.report ?? {}) : parseReport(body.report, doc.report ?? {})) as Record<string, any>
+  const status: TestStatus = body.submit === true ? 'report_ready' : 'conducted'
+  const data: Record<string, any> = { status, report: body.submit === true ? finishedReport(report) : report }
+  if (doc.status === 'scheduled') data.conductedAt = new Date().toISOString()
+  if (status !== doc.status) data.history = [...(Array.isArray(doc.history) ? doc.history : []), note(status, user, 'Entered by the allocated teacher')]
+
+  await (payload as any).update({ collection: 'enquiry-tests', id, data, overrideAccess: true })
+  return serializeForTester(await load(payload, id))
+}
+
+/** Active teachers who can be allocated to take a physical test. */
 export async function listTesters(payload: Payload) {
   const res = await (payload as any).find({
     collection: 'users',
-    where: { and: [{ status: { equals: 'active' } }, { role: { in: ['super_admin', 'teacher', 'operations_manager', 'student_counselor'] } }] },
+    where: { and: [{ status: { equals: 'active' } }, { role: { equals: 'teacher' } }] },
     limit: 200,
     depth: 0,
     overrideAccess: true,

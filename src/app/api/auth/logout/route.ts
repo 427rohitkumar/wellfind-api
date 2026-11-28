@@ -1,5 +1,4 @@
-import type { Payload } from 'payload'
-import { getPayload } from 'payload'
+import { createLocalReq, getPayload, logoutOperation } from 'payload'
 import config from '@/payload.config'
 
 export async function OPTIONS(): Promise<Response> {
@@ -15,21 +14,23 @@ export async function OPTIONS(): Promise<Response> {
 
 /**
  * POST /api/auth/logout
- * Invalidates the current session. Payload's auth.logout clears the token cookie
- * and invalidates the session server-side where supported.
+ * Ends the caller's session (Payload auth sessions), so this token is rejected from now on.
+ * Other sessions of the same user stay signed in.
  *
- * Note: Payload uses stateless JWTs by default. Calling logout tells the client
- * to discard the token; server-side revocation is not implemented unless
- * Payload's session tracking is enabled. Clients should delete the token.
+ * Without a valid token there is nothing to end and the answer is still 200.
+ * Blocked and suspended accounts may log out too.
  */
 export async function POST(request: Request): Promise<Response> {
   try {
     const payload = await getPayload({ config })
 
-    await (payload as any).auth({
-      req: request as unknown as { headers: Headers },
-      action: 'logout',
-    })
+    const { user } = await payload.auth({ headers: request.headers })
+    if (user) {
+      await logoutOperation({
+        collection: payload.collections[user.collection],
+        req: await createLocalReq({ user }, payload),
+      })
+    }
 
     return Response.json({ message: 'Logged out successfully.' })
   } catch (err: unknown) {

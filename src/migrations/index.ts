@@ -2,6 +2,8 @@ import * as migration_20261121_073449_initial_schema from './20261121_073449_ini
 import * as migration_20261122_131531_mobile_notifications from './20261122_131531_mobile_notifications';
 import * as migration_20261122_195151_account_deletion from './20261122_195151_account_deletion';
 import * as migration_20261124_112458_add_roles_to_users from './20261124_112458_add_roles_to_users';
+import * as migration_20261128_063005_test_flow from './20261128_063005_test_flow';
+import * as migration_20261128_191000_enquiry_intent from './20261128_191000_enquiry_intent';
 
 export const migrations = [
   {
@@ -22,6 +24,16 @@ export const migrations = [
   {
     up: migration_20261124_112458_add_roles_to_users.up,
     down: migration_20261124_112458_add_roles_to_users.down,
-    name: '20261124_112458_add_roles_to_users'
+    name: '20261124_112458_add_roles_to_users',
+  },
+  {
+    up: migration_20261128_063005_test_flow.up,
+    down: migration_20261128_063005_test_flow.down,
+    name: '20261128_063005_test_flow'
+  },
+  {
+    up: migration_20261128_191000_enquiry_intent.up,
+    down: migration_20261128_191000_enquiry_intent.down,
+    name: '20261128_191000_enquiry_intent'
   },
 ];

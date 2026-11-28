@@ -12,6 +12,7 @@ const ADMIN_EMAIL = 'enq-test-spec-admin@example.com'
 let payload: any
 let token = ''
 let adminId = 0
+let teacherId = 0
 const enquiryIds: number[] = []
 const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) })
 
@@ -52,7 +53,7 @@ describe('Enquiry tests module', () => {
       await payload.delete({ collection: 'enquiry-tests', where: { studentEnquiry: { equals: id } }, overrideAccess: true }).catch(() => undefined)
       await payload.delete({ collection: 'student-enquiries', id, overrideAccess: true }).catch(() => undefined)
     }
-    await payload.delete({ collection: 'users', id: adminId, overrideAccess: true }).catch(() => undefined)
+    for (const id of [adminId, teacherId]) if (id) await payload.delete({ collection: 'users', id, overrideAccess: true }).catch(() => undefined)
   })
 
   it('requires an admin', async () => {
@@ -133,12 +134,17 @@ describe('Enquiry tests module', () => {
     const noTester = await json(await patchRoute(req('PATCH', { status: 'scheduled', scheduledAt: when }), ctx(t.id)))
     expect(noTester.status).toBe(400)
 
+    // only teachers can take a physical test
+    const teacher = await payload.create({ collection: 'users', data: { email: `enq-test-spec-teacher-${TAG}@example.com`, password: PASSWORD, role: 'teacher', status: 'active' }, overrideAccess: true })
+    teacherId = teacher.id
     const testers = await json(await testersRoute(req()))
-    expect(testers.body.data.docs.some((x: any) => x.id === adminId)).toBe(true)
+    expect(testers.body.data.docs.some((x: any) => x.id === teacher.id)).toBe(true)
+    expect(testers.body.data.docs.some((x: any) => x.id === adminId)).toBe(false)
+    expect((await json(await patchRoute(req('PATCH', { tester: adminId }), ctx(t.id)))).status).toBe(400)
 
-    const ok = await json(await patchRoute(req('PATCH', { tester: adminId, venue: '12 Test Street', status: 'scheduled', scheduledAt: when }), ctx(t.id)))
+    const ok = await json(await patchRoute(req('PATCH', { tester: teacher.id, venue: '12 Test Street', status: 'scheduled', scheduledAt: when }), ctx(t.id)))
     expect(ok.status).toBe(200)
-    expect(ok.body.data.tester.id).toBe(adminId)
+    expect(ok.body.data.tester.id).toBe(teacher.id)
     const enquiry = await payload.findByID({ collection: 'student-enquiries', id: eid, overrideAccess: true })
     expect(enquiry.testVenue).toBe('12 Test Street')
   })

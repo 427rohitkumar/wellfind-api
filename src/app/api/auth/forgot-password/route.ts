@@ -31,11 +31,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { email } = body
+  const rawEmail = body.email
 
-  if (!email || typeof email !== 'string') {
+  if (!rawEmail || typeof rawEmail !== 'string' || !rawEmail.trim()) {
     return Response.json({ error: 'Email is required.' }, { status: 400 })
   }
+
+  const email = rawEmail.trim().toLowerCase()
 
   try {
     const payload = await getPayload({ config })
@@ -100,8 +102,8 @@ export async function POST(request: Request): Promise<Response> {
     })
 
     if (!emailResult.success) {
-      // OTP is stored but email failed — still return generic response
-      // The OTP will expire and can be re-requested
+      // OTP is stored but email failed — log on server and still return generic response
+      console.error('[forgot-password] Failed to send OTP email:', emailResult.error)
       return Response.json(genericResponse)
     }
 

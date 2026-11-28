@@ -16,6 +16,7 @@ import { ServiceError } from '@/services/studentService'
 import { findOwnApplication } from '@/services/teacherApplicationService'
 import { serializePayment } from '@/services/paymentQueries'
 import { nextExpiry, registrationState } from '@/services/registrationRenewal'
+import { handleRazorpayPayoutWebhook } from '@/services/payoutService'
 
 export { serializePayment }
 
@@ -398,6 +399,9 @@ export async function handleRazorpayWebhook(
     return { ok: false, status: 400, message: 'Invalid payload.' }
   }
   const type = String(body?.event || '')
+  if (type.startsWith('payout.')) {
+    return handleRazorpayPayoutWebhook(payload, body, eventId)
+  }
   const entity = body?.payload?.payment?.entity as (RazorpayPayment & { error_description?: string }) | undefined
   const orderId = entity?.order_id || body?.payload?.order?.entity?.id
   if (!orderId) return { ok: true, status: 200, message: 'Ignored (no order).' }

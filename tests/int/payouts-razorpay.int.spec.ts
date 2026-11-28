@@ -1,8 +1,10 @@
+import { createHmac } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { POST as razorpayPayout } from '@/app/api/admin/payments/payouts/razorpay/route'
 import { POST as manualPayout } from '@/app/api/admin/payments/payouts/route'
+import { POST as razorpayWebhook } from '@/app/api/payments/razorpay/webhook/route'
 
 // Razorpay is always faked here: no request ever leaves the machine and no money can move.
 const PASSWORD = 'RzpSpecPass123!'
@@ -20,10 +22,15 @@ const reference = () => `PO_${made.alloc}_${month.replace('-', '')}`
 
 const request = (path: string, body: unknown) =>
   new Request(`http://localhost:3000${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) })
-const pay = async () => {
-  const res = await razorpayPayout(request('/api/admin/payments/payouts/razorpay', { allocationId: made.alloc, month, amount: 2600, upiId: 'teacher@upi', teacherName: 'Rzp Spec' }))
+const pay = async (change: { amount?: number; upiId?: string } = {}) => {
+  const res = await razorpayPayout(request('/api/admin/payments/payouts/razorpay', { allocationId: made.alloc, month, amount: 2600, upiId: 'teacher@upi', teacherName: 'Rzp Spec', ...change }))
   return { status: res.status, body: (await res.json()) as any }
 }
+const saved = { methods: [{ id: 'upi-1', type: 'upi', upiId: 'teacher@upi', isPrimary: true }], primaryId: 'upi-1' }
+const saveSettings = (payoutSettings: unknown) =>
+  payload.update({ collection: 'teacher-profiles', id: made.profile, data: { payoutSettings }, overrideAccess: true })
+const setDue = (teacherPayout: number | null) =>
+  payload.update({ collection: 'teacher-allocations', id: made.alloc, data: { teacherPayout }, overrideAccess: true })
 const recorded = async () =>
   (await payload.find({ collection: 'teacher-payouts', where: { allocation: { equals: made.alloc } }, depth: 0, overrideAccess: true })).docs as any[]
 
@@ -59,7 +66,9 @@ describe('razorpay teacher payouts', () => {
     made.alloc = a.id
     token = (await payload.login({ collection: 'users', data: { email: ADMIN, password: PASSWORD } })).token
   })
-  beforeEach(() => {
+  beforeEach(async () => {
+    await saveSettings(saved)
+    await setDue(2600)
     calls = []
     vi.stubEnv('RAZORPAY_KEY_ID', 'rzp_test_spec')
     vi.stubEnv('RAZORPAY_KEY_SECRET', 'spec-secret')
@@ -152,12 +161,140 @@ describe('razorpay teacher payouts', () => {
     expect(await recorded()).toHaveLength(0)
   })
 
+  it.each<[string, { amount?: number; upiId?: string }, string]>([
+    ['a UPI ID the teacher has not saved', { upiId: 'someone-else@upi' }, 'not saved'],
+    ['more than the amount due', { amount: 26000 }, 'amount due'],
+    ['less than the amount due', { amount: 2599.99 }, 'amount due'],
+  ])('sends nothing to %s', async (_name, change, message) => {
+    fakeRazorpay(list(), { json: payout('processed') })
+    const res = await pay(change)
+    expect(res.status).toBe(409)
+    expect(res.body.message).toContain(message)
+    expect(posts()).toHaveLength(0)
+    expect(await recorded()).toHaveLength(0)
+  })
+
+  it('sends nothing when the teacher has no saved UPI ID', async () => {
+    await saveSettings({ methods: [{ id: 'bank-1', type: 'bank', accountNumber: '000011112222' }], primaryId: 'bank-1' })
+    fakeRazorpay(list(), { json: payout('processed') })
+    expect((await pay()).status).toBe(409)
+    expect(posts()).toHaveLength(0)
+  })
+
+  it('sends nothing when the allocation has no payout amount', async () => {
+    await setDue(null)
+    fakeRazorpay(list(), { json: payout('processed') })
+    expect((await pay()).status).toBe(409)
+    expect(posts()).toHaveLength(0)
+  })
+
+  it('gives no payment link for unsaved details when Razorpay refuses the check', async () => {
+    fakeRazorpay({ status: 401, json: { error: { description: 'Authentication failed' } } })
+    const res = await pay({ upiId: 'someone-else@upi' })
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).not.toContain('upi://')
+  })
+
+  it('sends the saved UPI ID, from either saved format, whatever the letter case of the request', async () => {
+    await saveSettings({ upiId: 'Teacher@UPI' })
+    fakeRazorpay(list(), { json: payout('processed') })
+    expect((await pay()).body.data.success).toBe(true)
+    expect(posts()[0].body.fund_account.vpa.address).toBe('Teacher@UPI')
+    expect(posts()[0].body.amount).toBe(260000)
+  })
+
+  it('still records a payout already processed after the saved details have changed', async () => {
+    await saveSettings({ methods: [], primaryId: null })
+    await setDue(3000)
+    fakeRazorpay(list(payout('processed')))
+    expect((await pay()).body.data.success).toBe(true)
+    expect(posts()).toHaveLength(0)
+    expect((await recorded())[0]).toMatchObject({ amount: 2600 })
+  })
+
   it('never calls Razorpay for a month that is already paid manually', async () => {
+    fakeRazorpay(list())
     const manual = await manualPayout(request('/api/admin/payments/payouts', { allocationId: made.alloc, month, reference: 'UPI-MANUAL' }))
     expect(manual.status).toBe(201)
+    calls = []
     fakeRazorpay(list(), { json: payout('processed') })
     expect((await pay()).status).toBe(409)
     expect(calls).toHaveLength(0)
     expect(await recorded()).toHaveLength(1)
+  })
+
+  it('blocks manual payout recording while a Razorpay payout is in progress or processed', async () => {
+    fakeRazorpay(list(payout('processing')))
+    const res = await manualPayout(request('/api/admin/payments/payouts', { allocationId: made.alloc, month, reference: 'UPI-MANUAL' }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).message).toContain('in progress')
+    expect(await recorded()).toHaveLength(0)
+  })
+
+  it('records a waiting payout via payout.processed webhook and is idempotent', async () => {
+    vi.stubEnv('RAZORPAY_WEBHOOK_SECRET', 'whsec_test_secret')
+    const eventBody = JSON.stringify({
+      event: 'payout.processed',
+      payload: { payout: { entity: { id: 'pout_wh_1', status: 'processed', amount: 260000, reference_id: reference(), utr: 'UTR_WH_1' } } },
+    })
+    const sig = createHmac('sha256', 'whsec_test_secret').update(eventBody).digest('hex')
+    const sendWebhook = (eventId: string) =>
+      razorpayWebhook(
+        new Request('http://localhost:3000/api/payments/razorpay/webhook', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-razorpay-signature': sig, 'x-razorpay-event-id': eventId },
+          body: eventBody,
+        }),
+      )
+
+    const first = await sendWebhook('evt_wh_1')
+    expect(first.status).toBe(200)
+    const rows = await recorded()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ amount: 2600, paymentMethod: 'razorpay', razorpayPayoutId: 'pout_wh_1', utr: 'UTR_WH_1' })
+
+    const dup = await sendWebhook('evt_wh_2')
+    expect(dup.status).toBe(200)
+    expect(await recorded()).toHaveLength(1)
+  })
+
+  it('removes a recorded payout when payout.reversed webhook arrives', async () => {
+    vi.stubEnv('RAZORPAY_WEBHOOK_SECRET', 'whsec_test_secret')
+    fakeRazorpay(list(), { json: payout('processed', { id: 'pout_rev_1' }) })
+    expect((await pay()).body.data.success).toBe(true)
+    expect(await recorded()).toHaveLength(1)
+
+    const revBody = JSON.stringify({
+      event: 'payout.reversed',
+      payload: { payout: { entity: { id: 'pout_rev_1', status: 'reversed', reference_id: reference() } } },
+    })
+    const sig = createHmac('sha256', 'whsec_test_secret').update(revBody).digest('hex')
+    const res = await razorpayWebhook(
+      new Request('http://localhost:3000/api/payments/razorpay/webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-razorpay-signature': sig, 'x-razorpay-event-id': 'evt_rev_1' },
+        body: revBody,
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(await recorded()).toHaveLength(0)
+  })
+
+  it('ignores payout.failed webhook without recording a payout', async () => {
+    vi.stubEnv('RAZORPAY_WEBHOOK_SECRET', 'whsec_test_secret')
+    const failBody = JSON.stringify({
+      event: 'payout.failed',
+      payload: { payout: { entity: { id: 'pout_fail_1', status: 'failed', reference_id: reference() } } },
+    })
+    const sig = createHmac('sha256', 'whsec_test_secret').update(failBody).digest('hex')
+    const res = await razorpayWebhook(
+      new Request('http://localhost:3000/api/payments/razorpay/webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-razorpay-signature': sig, 'x-razorpay-event-id': 'evt_fail_1' },
+        body: failBody,
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(await recorded()).toHaveLength(0)
   })
 })

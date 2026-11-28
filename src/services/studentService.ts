@@ -67,6 +67,8 @@ export function serializePublicEnquiry(
     additionalNotes: doc.additionalNotes,
     agreedToPolicy: doc.agreedToPolicy,
     enquirySource: (doc.enquirySource as string | undefined) || 'website',
+    inquiryIntent: (doc.inquiryIntent as string | undefined) || 'tutor_only',
+    preferredTestMode: (doc.preferredTestMode as string | undefined) || null,
     createdAt: doc.createdAt,
   }
 }
@@ -87,6 +89,8 @@ export function serializeAdminEnquiry(
     testScheduledAt: doc.testScheduledAt ?? null,
     testVenue: doc.testVenue ?? null,
     testNotes: doc.testNotes ?? null,
+    testSkipped: Boolean(doc.testSkipped),
+    testSkippedAt: doc.testSkippedAt ?? null,
     updatedAt: doc.updatedAt,
   }
 }

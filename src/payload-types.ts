@@ -589,6 +589,16 @@ export interface EnquiryTest {
     iqScore?: number | null;
     creativityScore?: number | null;
     academicScore?: number | null;
+    /**
+     * Other areas the teacher scored, e.g. memory or communication.
+     */
+    extraScores?:
+      | {
+          label: string;
+          score: number;
+          id?: string | null;
+        }[]
+      | null;
     strengths?: string | null;
     improvementAreas?: string | null;
     /**
@@ -1149,10 +1159,14 @@ export interface AllocationWork {
   id: number;
   allocation: number | TeacherAllocation;
   kind: 'assignment' | 'test';
+  /**
+   * For tests: weekly, monthly or other.
+   */
+  period?: ('weekly' | 'monthly' | 'other') | null;
   title: string;
   description?: string | null;
   /**
-   * YYYY-MM-DD
+   * YYYY-MM-DD. For tests, the test date.
    */
   dueDate?: string | null;
   status: 'assigned' | 'submitted' | 'graded' | 'missed';
@@ -1800,6 +1814,13 @@ export interface EnquiryTestsSelect<T extends boolean = true> {
         iqScore?: T;
         creativityScore?: T;
         academicScore?: T;
+        extraScores?:
+          | T
+          | {
+              label?: T;
+              score?: T;
+              id?: T;
+            };
         strengths?: T;
         improvementAreas?: T;
         recommendation?: T;
@@ -1941,6 +1962,7 @@ export interface DataDeletionRequestsSelect<T extends boolean = true> {
 export interface AllocationWorkSelect<T extends boolean = true> {
   allocation?: T;
   kind?: T;
+  period?: T;
   title?: T;
   description?: T;
   dueDate?: T;

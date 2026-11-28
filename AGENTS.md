@@ -4,6 +4,8 @@ Backend and database for Wellfind Academic. Payload 3.92 on Next.js 16, PostgreS
 
 Workspace map: `../AGENTS.md`. Find files: Grep `../docs/index/api.md`; by feature: `../docs/FEATURE_MAP.md`.
 
+Before any feature, fix or issue: check saved audits in `../docs/audits/` (steps: "Audits" in `../AGENTS.md`).
+
 ## Danger
 
 - `.env` points to a **remote database**. Ask before `pnpm dev` (Payload may push schema changes), `pnpm migrate`, `seed:*` or anything in `scripts/` (some delete data).

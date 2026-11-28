@@ -27,9 +27,12 @@ The month is recorded as paid **only when Razorpay reports the payout `processed
 | 400 | Missing or invalid field |
 | 404 / 409 | Unknown allocation, month not taught, or already paid |
 | 503 | Razorpay keys or account number not set |
+| 409 | `amount` is not the allocation's `teacherPayout` (or none is set), or `upiId` is not saved in the teacher's payout settings |
+
+`upiId` and `amount` confirm what the finance user saw. New money goes only to the saved UPI ID (any of the teacher's saved methods, letter case ignored) for exactly the amount due; any other amount is recorded manually. These two checks run after the lookup, so a payout already sent can still be recorded after the details change.
 
 ## Limits
 
 - No payout webhook yet: a waiting payout is recorded only when this endpoint is called again.
 - A payout reversed after it was recorded is not undone automatically.
-- `upiId` and `amount` are taken from the request.
+- The manual record (`POST /api/admin/payments/payouts`) accepts any amount from the finance user.

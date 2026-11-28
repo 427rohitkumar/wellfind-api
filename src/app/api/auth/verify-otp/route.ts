@@ -30,11 +30,12 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { email, otp } = body
+  const { email: rawEmail, otp } = body
 
-  if (!email || typeof email !== 'string') {
+  if (!rawEmail || typeof rawEmail !== 'string' || !rawEmail.trim()) {
     return Response.json({ error: 'Email is required.' }, { status: 400 })
   }
+  const email = rawEmail.trim().toLowerCase()
   if (!otp || typeof otp !== 'string' || !/^\d{4}$/.test(otp)) {
     return Response.json({ error: 'A valid 4-digit OTP is required.' }, { status: 400 })
   }

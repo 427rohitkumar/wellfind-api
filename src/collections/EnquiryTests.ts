@@ -15,11 +15,12 @@ export type TestPaymentStatus = (typeof testPaymentStatuses)[number]
  * Wellfind Academic — the optional pre-allocation assessment of a student.
  *
  * Asked for during the enquiry stage (the parent or student chooses to take it; it can be skipped).
- * Two modes: `physical` (a tester visits, fee ₹99) and `digital` (online quiz, fee ₹49).
- * The result is a general profile (IQ, creativity, academic level) used to pick the best teacher
- * and to guide how much effort the teacher should put in.
+ * Two modes: `physical` (an allocated teacher visits, fee ₹99) and `digital` (online quiz, fee ₹49).
+ * The result is a general profile (IQ, creativity, academic level and any other scores) used to pick
+ * the best teacher and to guide how much effort the teacher should put in.
  *
- * Access: super_admin only. Written through the admin API (services/enquiryTestService).
+ * Written through the API (services/enquiryTestService): staff book the test, the allocated teacher
+ * enters the result of a physical test.
  */
 export const EnquiryTests: CollectionConfig = {
   slug: 'enquiry-tests',
@@ -57,6 +58,16 @@ export const EnquiryTests: CollectionConfig = {
         { name: 'iqScore', type: 'number', min: 0, max: 100 },
         { name: 'creativityScore', type: 'number', min: 0, max: 100 },
         { name: 'academicScore', type: 'number', min: 0, max: 100 },
+        {
+          name: 'extraScores',
+          type: 'array',
+          maxRows: 10,
+          admin: { description: 'Other areas the teacher scored, e.g. memory or communication.' },
+          fields: [
+            { name: 'label', type: 'text', required: true, maxLength: 60 },
+            { name: 'score', type: 'number', required: true, min: 0, max: 100 },
+          ],
+        },
         { name: 'strengths', type: 'textarea', maxLength: 2000 },
         { name: 'improvementAreas', type: 'textarea', maxLength: 2000 },
         { name: 'recommendation', type: 'textarea', maxLength: 2000, admin: { description: 'Guidance for the teacher: focus areas and effort needed.' } },

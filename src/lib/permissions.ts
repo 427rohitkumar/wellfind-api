@@ -140,6 +140,7 @@ export function moduleForPath(pathname: string): Module | Module[] {
   if (starts('/api/admin/payments')) return 'payments'
   if (starts('/api/admin/mail')) return 'mail'
   if (starts('/api/admin/enquiry-tests')) return 'tests'
+  if (starts('/api/admin/academic-tests')) return 'tests'
   if (starts('/api/admin/student-enquiries')) return 'student_inquiries'
   if (starts('/api/auth/admin/users')) return 'users'
   if (starts('/api/inquiries')) return ['student_inquiries', 'teacher_inquiries']

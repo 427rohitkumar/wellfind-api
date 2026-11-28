@@ -190,6 +190,29 @@ export async function getTeacherPayoutSettingsById(payload: Payload, teacherId: 
   return { methods: [], primaryId: null }
 }
 
+/**
+ * What an automatic payout may send: the allocation's monthly payout, to a UPI ID saved on the teacher.
+ * The request only confirms what the finance user saw; the returned values come from the database.
+ */
+async function savedPayoutTarget(payload: Payload, allocation: Record<string, any>, upiId: string, amount: number) {
+  const due = allocation.teacherPayout
+  if (typeof due !== 'number' || !(due > 0)) {
+    throw new ServiceError('This allocation has no payout amount set. Record the payment manually.', 409)
+  }
+  if (Math.round(amount * 100) !== Math.round(due * 100)) {
+    throw new ServiceError(`Automatic payout sends only the amount due (₹${due}). Record any other amount manually.`, 409)
+  }
+  const settings = (await getTeacherPayoutSettingsById(payload, Number(extractRelationId(allocation.teacher)))) as Record<string, any>
+  const methods = Array.isArray(settings.methods) && settings.methods.length > 0 ? settings.methods : [settings]
+  const saved = methods
+    .map((m: any) => (typeof m?.upiId === 'string' ? m.upiId.trim() : ''))
+    .find((id: string) => id !== '' && id.toLowerCase() === upiId.toLowerCase())
+  if (!saved) {
+    throw new ServiceError("This UPI ID is not saved in the teacher's payout details. Nothing was sent. Reopen the payment and check the teacher's details.", 409)
+  }
+  return { upiId: saved as string, amount: due }
+}
+
 /** The allocation behind an unpaid student-month; throws when that month cannot be paid. */
 async function findPayableAllocation(payload: Payload, allocationId: number, month: unknown) {
   if (!Number.isInteger(allocationId) || allocationId <= 0) throw bad('allocationId', 'allocationId is required.')
@@ -202,9 +225,30 @@ async function findPayableAllocation(payload: Payload, allocationId: number, mon
   return { allocation: a, month }
 }
 
-export async function recordPayout(payload: Payload, admin: AuthUserRecord, body: Record<string, unknown>) {
+export async function recordPayout(
+  payload: Payload,
+  admin: AuthUserRecord | null,
+  body: Record<string, unknown>,
+  opts?: { skipRazorpayCheck?: boolean },
+) {
   const allocationId = Number(body.allocationId)
   const { allocation: a, month } = await findPayableAllocation(payload, allocationId, body.month)
+  if (!opts?.skipRazorpayCheck) {
+    const cfg = getRazorpayConfig()
+    const accountNumber = process.env.RAZORPAY_ACCOUNT_NUMBER?.trim()
+    if (cfg.configured && accountNumber) {
+      const referenceId = `PO_${allocationId}_${month.replace('-', '')}`
+      const { lookup, earlier } = await lookupRazorpayPayouts(referenceId, accountNumber, cfg.keyId!, cfg.keySecret!)
+      if (!lookup.ok || !Array.isArray(lookup.data?.items)) {
+        throw new ServiceError('Could not verify with Razorpay whether an automatic payout is already in progress. Try again before recording manually.', 503)
+      }
+      const live = earlier.find((p) => !NOT_PAID.includes(p.status))
+      if (live) {
+        const state = live.status === 'processed' ? 'already processed' : `in progress (${live.status})`
+        throw new ServiceError(`A Razorpay payout is ${state} for this month. Do not record a manual payment.`, 409)
+      }
+    }
+  }
   const amount = body.amount === undefined || body.amount === null || body.amount === '' ? a.teacherPayout : Number(body.amount)
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) throw bad('amount', 'Enter a valid amount (the allocation has no payout set).')
   const paidAt = body.paidAt ? new Date(String(body.paidAt)) : new Date()
@@ -225,7 +269,7 @@ export async function recordPayout(payload: Payload, admin: AuthUserRecord, body
       payoutDetails: body.payoutDetails || null,
       utr: text('utr', 120) || text('reference', 120),
       razorpayPayoutId: text('razorpayPayoutId', 120),
-      recordedBy: admin.id,
+      ...(admin ? { recordedBy: admin.id } : {}),
     },
     overrideAccess: true,
   })
@@ -258,10 +302,21 @@ async function razorpayX(path: string, init: RequestInit, keyId: string, keySecr
 /** A definite refusal: Razorpay answered and created nothing. Timeouts, conflicts, rate limits and 5xx are not. */
 const refused = (r: RazorpayXReply) => r.status >= 400 && r.status < 500 && r.status !== 409 && r.status !== 429
 
+/** Queries RazorpayX for existing payouts matching `referenceId`. */
+async function lookupRazorpayPayouts(referenceId: string, accountNumber: string, keyId: string, keySecret: string) {
+  const query = new URLSearchParams({ account_number: accountNumber, reference_id: referenceId, count: '100' })
+  const lookup = await razorpayX(`/payouts?${query}`, { method: 'GET' }, keyId, keySecret)
+  const earlier = lookup.ok && Array.isArray(lookup.data?.items)
+    ? (lookup.data.items as any[]).filter((p) => p.reference_id === referenceId)
+    : []
+  return { lookup, earlier }
+}
+
 /**
  * Pays a teacher's student-month through RazorpayX (UPI). The month is recorded as paid only when Razorpay
  * reports the payout `processed`. Calling again for the same month checks the existing payout instead of
- * sending money twice. The result is one of:
+ * sending money twice. New money goes only to a UPI ID saved on the teacher, for the amount due
+ * (otherwise `409`, nothing sent). The result is one of:
  *   success          recorded as paid
  *   pending          money may be on its way; do not pay manually, call again later
  *   fallbackToManual Razorpay refused or the payout failed; paying manually is safe
@@ -276,7 +331,7 @@ export async function initiateRazorpayPayout(payload: Payload, admin: AuthUserRe
   if (!upiId) throw bad('upiId', 'Teacher UPI ID is required for Razorpay UPI payout.')
   if (!Number.isFinite(amount) || amount <= 0) throw bad('amount', 'Valid amount is required.')
   // Validate before any money moves: unknown allocation, wrong month or an already paid month stop here.
-  await findPayableAllocation(payload, allocationId, month)
+  const { allocation } = await findPayableAllocation(payload, allocationId, month)
 
   const cfg = getRazorpayConfig()
   if (!cfg.configured) throw new ServiceError('Razorpay is not configured. Record the payment manually.', 503)
@@ -297,12 +352,13 @@ export async function initiateRazorpayPayout(payload: Payload, admin: AuthUserRe
     payoutStatus: (payout?.status as string | undefined) ?? 'unknown',
     razorpayPayoutId: (payout?.id as string | undefined) ?? null,
   })
-  const manual = (message: string) => ({
+  const target = () => savedPayoutTarget(payload, allocation, upiId, amount)
+  const manual = (message: string, to: { upiId: string; amount: number }) => ({
     success: false,
     pending: false,
     fallbackToManual: true,
     message,
-    upiUri: `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(contactName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Wellfind-Payout-${month}`)}`,
+    upiUri: `upi://pay?pa=${encodeURIComponent(to.upiId)}&pn=${encodeURIComponent(contactName)}&am=${to.amount}&cu=INR&tn=${encodeURIComponent(`Wellfind-Payout-${month}`)}`,
   })
   const waiting = (payout: any) =>
     pending(`Razorpay payout is "${payout?.status ?? 'unknown'}". It is not marked paid yet. Check again later and do not pay manually.`, payout)
@@ -310,18 +366,23 @@ export async function initiateRazorpayPayout(payload: Payload, admin: AuthUserRe
   /** Records a payout that Razorpay reports as processed, using Razorpay's amount. */
   const confirm = async (payout: any, sentTo?: string) => {
     try {
-      const record = await recordPayout(payload, admin, {
-        allocationId,
-        month,
-        amount: typeof payout.amount === 'number' ? payout.amount / 100 : amount,
-        paidAt: new Date().toISOString(),
-        reference: payout.utr || payout.id,
-        paymentMethod: 'razorpay',
-        razorpayPayoutId: payout.id,
-        utr: payout.utr || payout.id,
-        note: 'Razorpay UPI payout (processed)',
-        payoutDetails: { upiId: sentTo, razorpayPayoutId: payout.id, status: payout.status },
-      })
+      const record = await recordPayout(
+        payload,
+        admin,
+        {
+          allocationId,
+          month,
+          amount: typeof payout.amount === 'number' ? payout.amount / 100 : amount,
+          paidAt: new Date().toISOString(),
+          reference: payout.utr || payout.id,
+          paymentMethod: 'razorpay',
+          razorpayPayoutId: payout.id,
+          utr: payout.utr || payout.id,
+          note: 'Razorpay UPI payout (processed)',
+          payoutDetails: { upiId: sentTo, razorpayPayoutId: payout.id, status: payout.status },
+        },
+        { skipRazorpayCheck: true },
+      )
       return { success: true, pending: false, fallbackToManual: false, payout, record, message: 'Razorpay payout processed and recorded.' }
     } catch (err) {
       payload.logger.error({ err, msg: `Razorpay payout ${payout.id} is processed but was not recorded` })
@@ -330,18 +391,19 @@ export async function initiateRazorpayPayout(payload: Payload, admin: AuthUserRe
   }
 
   // 1. What does Razorpay already hold for this student-month?
-  const query = new URLSearchParams({ account_number: accountNumber, reference_id: referenceId, count: '100' })
-  const lookup = await razorpayX(`/payouts?${query}`, { method: 'GET' }, cfg.keyId!, cfg.keySecret!)
-  if (refused(lookup)) return manual(lookup.data?.error?.description || `Razorpay Payouts returned status ${lookup.status}.`)
+  const { lookup, earlier } = await lookupRazorpayPayouts(referenceId, accountNumber, cfg.keyId!, cfg.keySecret!)
+  if (refused(lookup)) return manual(lookup.data?.error?.description || `Razorpay Payouts returned status ${lookup.status}.`, await target())
   if (!lookup.ok || !Array.isArray(lookup.data?.items)) {
     return pending('Could not check this payout with Razorpay, so nothing was sent. Try again before paying manually.')
   }
-  const earlier = (lookup.data.items as any[]).filter((p) => p.reference_id === referenceId)
   const live = earlier.find((p) => !NOT_PAID.includes(p.status))
   if (live) return live.status === 'processed' ? confirm(live) : waiting(live)
 
-  // 2. Send a new payout. The same request within the hour reuses the key, so Razorpay cannot pay it twice.
-  const attempt = [referenceId, earlier.length, upiId, new Date().toISOString().slice(0, 13)].join('|')
+  // 2. Send a new payout. Checked only here, so a payout already sent can still be looked up and recorded
+  // after the teacher's details or the due amount change.
+  const to = await target()
+  // The same request within the hour reuses the key, so Razorpay cannot pay it twice.
+  const attempt = [referenceId, earlier.length, to.upiId, new Date().toISOString().slice(0, 13)].join('|')
   const created = await razorpayX(
     '/payouts',
     {
@@ -352,8 +414,8 @@ export async function initiateRazorpayPayout(payload: Payload, admin: AuthUserRe
       },
       body: JSON.stringify({
         account_number: accountNumber,
-        fund_account: { account_type: 'vpa', vpa: { address: upiId }, contact: { name: contactName, type: 'vendor' } },
-        amount: Math.round(amount * 100), // paise
+        fund_account: { account_type: 'vpa', vpa: { address: to.upiId }, contact: { name: contactName, type: 'vendor' } },
+        amount: Math.round(to.amount * 100), // paise
         currency: 'INR',
         mode: 'UPI',
         purpose: 'payout',
@@ -366,13 +428,13 @@ export async function initiateRazorpayPayout(payload: Payload, admin: AuthUserRe
     cfg.keySecret!,
   )
 
-  if (refused(created)) return manual(created.data?.error?.description || `Razorpay Payouts returned status ${created.status}.`)
+  if (refused(created)) return manual(created.data?.error?.description || `Razorpay Payouts returned status ${created.status}.`, to)
   if (!created.ok || !created.data?.id) {
     return pending('Razorpay did not confirm the request, so the payout may or may not exist. Check again before paying manually.')
   }
-  if (created.data.status === 'processed') return confirm(created.data, upiId)
+  if (created.data.status === 'processed') return confirm(created.data, to.upiId)
   if (NOT_PAID.includes(created.data.status)) {
-    return manual(created.data.status_details?.description || `Razorpay payout ${created.data.status}.`)
+    return manual(created.data.status_details?.description || `Razorpay payout ${created.data.status}.`, to)
   }
   return waiting(created.data)
 }
@@ -382,4 +444,90 @@ export async function undoPayout(payload: Payload, id: number) {
   if (!doc) throw new ServiceError('Payout not found.', 404)
   await (payload as any).delete({ collection: 'teacher-payouts', id, overrideAccess: true })
   return { id }
+}
+
+/** Handles RazorpayX `payout.*` webhook events (signature already verified by `handleRazorpayWebhook`). */
+export async function handleRazorpayPayoutWebhook(
+  payload: Payload,
+  body: any,
+  eventId: string | null,
+): Promise<{ ok: boolean; status: number; message: string }> {
+  const type = String(body?.event || '')
+  const entity = body?.payload?.payout?.entity
+  if (!entity || typeof entity !== 'object') {
+    return { ok: true, status: 200, message: 'Ignored (no payout entity).' }
+  }
+
+  const ref = String(entity.reference_id || '')
+  const match = /^PO_(\d+)_(\d{4})(\d{2})$/.exec(ref)
+  const parsed = match ? { allocationId: Number(match[1]), month: `${match[2]}-${match[3]}` } : null
+
+  try {
+    if (type === 'payout.processed') {
+      if (!parsed) return { ok: true, status: 200, message: 'Ignored (no payout reference).' }
+      const existing = await (payload as any).find({
+        collection: 'teacher-payouts',
+        where: { and: [{ allocation: { equals: parsed.allocationId } }, { month: { equals: parsed.month } }] },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      if (existing.docs.length > 0) return { ok: true, status: 200, message: 'Payout already recorded.' }
+
+      const alloc = (await (payload as any).findByID({
+        collection: 'teacher-allocations',
+        id: parsed.allocationId,
+        depth: 0,
+        disableErrors: true,
+        overrideAccess: true,
+      })) as Record<string, any> | null
+      if (!alloc || !monthsFor(alloc).includes(parsed.month)) {
+        return { ok: true, status: 200, message: 'Ignored (unknown payout allocation).' }
+      }
+
+      const amount = typeof entity.amount === 'number' ? entity.amount / 100 : alloc.teacherPayout
+      await recordPayout(
+        payload,
+        null,
+        {
+          allocationId: parsed.allocationId,
+          month: parsed.month,
+          amount,
+          paidAt: new Date().toISOString(),
+          reference: entity.utr || entity.id,
+          paymentMethod: 'razorpay',
+          razorpayPayoutId: entity.id,
+          utr: entity.utr || entity.id,
+          note: 'Razorpay UPI payout (processed via webhook)',
+          payoutDetails: { razorpayPayoutId: entity.id, status: entity.status, eventId },
+        },
+        { skipRazorpayCheck: true },
+      )
+      return { ok: true, status: 200, message: 'Payout recorded.' }
+    }
+
+    if (type === 'payout.reversed' || entity.status === 'reversed') {
+      const where = entity.id
+        ? { razorpayPayoutId: { equals: String(entity.id) } }
+        : parsed
+          ? { and: [{ allocation: { equals: parsed.allocationId } }, { month: { equals: parsed.month } }, { paymentMethod: { equals: 'razorpay' } }] }
+          : null
+      if (!where) return { ok: true, status: 200, message: 'Ignored (no payout identifier).' }
+      const found = await (payload as any).find({ collection: 'teacher-payouts', where, limit: 10, depth: 0, overrideAccess: true })
+      if (found.docs.length === 0) return { ok: true, status: 200, message: 'Ignored (payout not recorded).' }
+      for (const doc of found.docs as Record<string, any>[]) {
+        await (payload as any).delete({ collection: 'teacher-payouts', id: doc.id, overrideAccess: true })
+      }
+      return { ok: true, status: 200, message: 'Reversed payout removed.' }
+    }
+
+    if (NOT_PAID.includes(entity.status) || type === 'payout.failed' || type === 'payout.rejected' || type === 'payout.cancelled') {
+      return { ok: true, status: 200, message: 'Payout failure noted.' }
+    }
+  } catch (err) {
+    payload.logger.error({ err, msg: `Razorpay payout webhook failed for ${ref || entity.id}` })
+    return { ok: false, status: 500, message: 'Processing failed.' }
+  }
+
+  return { ok: true, status: 200, message: 'Payout event ignored.' }
 }

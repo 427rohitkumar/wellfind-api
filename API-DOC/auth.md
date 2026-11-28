@@ -44,7 +44,7 @@ Example full URL: `http://localhost:3000/api/auth/login`
 | Method | Endpoint | Purpose | Access |
 |--------|----------|---------|--------|
 | `POST` | `/api/auth/login` | Authenticate with email + password; returns JWT token | Public (rate-limited) |
-| `POST` | `/api/auth/logout` | Log out current session | Authenticated |
+| `POST` | `/api/auth/logout` | End the current session (the token stops working) | Authenticated |
 | `GET` | `/api/auth/me` | Get authenticated user's profile | Authenticated |
 | `POST` | `/api/auth/forgot-password` | Request 4-digit OTP for password reset | Public (rate-limited) |
 | `POST` | `/api/auth/verify-otp` | Verify OTP; returns single-use reset auth token | Public (rate-limited) |
@@ -62,7 +62,7 @@ Example full URL: `http://localhost:3000/api/auth/login`
 
 ### How Authentication Works
 
-The API uses Payload CMS built-in JWT authentication. The `PAYLOAD_SECRET` environment variable signs and verifies tokens. Tokens are **stateless JWTs** — the server does not maintain a session store or token blacklist by default.
+The API uses Payload CMS built-in JWT authentication. The `PAYLOAD_SECRET` environment variable signs and verifies tokens. Every token is tied to a **server-side session** (Payload auth sessions): each login creates one, and a token works only while its session exists and the token has not expired.
 
 ### Logging In and Obtaining a JWT
 
@@ -89,16 +89,16 @@ curl -X GET http://localhost:3000/api/auth/me \
 
 ### Token Expiry
 
-Token expiry is controlled by Payload CMS's auth configuration, which is derived from `PAYLOAD_SECRET`. The exact expiry duration is not explicitly configured in the custom auth routes; it follows Payload's defaults unless overridden in `payload.config.ts`.
+Tokens and their sessions expire after 2 hours (7200 seconds, the Payload default; the `users` collection does not override it).
 
 ### Logout Behavior
 
-`POST /api/auth/logout` calls Payload's `auth.logout`. Because Payload uses **stateless JWTs** by default:
+`POST /api/auth/logout` ends the session of the token it receives:
 
-- The server instructs the client to discard the token.
-- **Server-side revocation is NOT implemented.** A JWT remains valid until it expires unless Payload session tracking is separately enabled.
-- Clients should delete the token from storage after calling logout.
-- If immediate revocation is required, implement server-side session tracking or token blacklisting outside the scope of this implementation.
+- That token is rejected (`401`) from then on, also if someone copied it.
+- Other sessions of the same user (another device or browser with its own login) stay signed in.
+- Anything that needs the token must happen **before** logout, for example unregistering the push device (`DELETE /api/notifications/devices/:id`).
+- Clients should still delete the token from storage.
 
 ### Authenticated Users vs Authorized Administrators
 
@@ -175,12 +175,12 @@ curl -X POST http://localhost:3000/api/auth/login \
 
 ### POST /api/auth/logout
 
-**Purpose:** Log out the current session. Instructs the client to discard the JWT.
+**Purpose:** End the current session, so this token stops working. Other sessions of the user are not touched.
 
-**Authentication required:** Yes (valid JWT in `Authorization: Bearer <token>` header)
+**Authentication required:** Send the JWT in the `Authorization: Bearer <token>` header. Without a valid token there is no session to end; the answer is still `200`. Blocked and suspended accounts can log out.
 
 **Headers:**
-- `Authorization: Bearer <token>` (required)
+- `Authorization: Bearer <token>` (needed to end a session)
 - `Content-Type: application/json` (recommended)
 
 **Request body:** None required.
@@ -205,12 +205,13 @@ curl -X POST http://localhost:3000/api/auth/logout \
 
 | Status | Condition | Example body |
 |--------|-----------|--------------|
-| 401 | Missing or invalid token | (Payload auth error) |
 | 500 | Server error | `{ "error": "<message>" }` |
 
+A missing, invalid, expired or already logged-out token answers `200` with the same body.
+
 **Security notes:**
-- Payload uses stateless JWTs. Logging out does **not** immediately invalidate the token on the server.
-- The token remains valid until its natural expiry unless additional revocation is implemented.
+- The session is removed on the server: the token is rejected immediately afterwards.
+- Only the session of the presented token ends.
 - Clients should delete the token from storage after logout.
 
 ---
@@ -951,7 +952,7 @@ npx tsx scripts/seed-admin.ts
 - **Reset auth tokens:** Single-use, 15-minute expiry, invalidated after password reset.
 - **Account enumeration:** Forgot-password returns a generic response for all emails (existing or not).
 - **Rate limiting:** Applied per IP for login, forgot-password, verify-OTP, and reset-password endpoints. Uses in-memory storage (use Redis for production multi-instance deployments).
-- **JWT:** Stateless; logout does not immediately invalidate tokens on the server. Clients must discard the token.
+- **JWT:** Bound to a server-side session; logout ends that session, so the token is rejected immediately.
 - **Admin access:** Enforced server-side on all `/api/auth/admin/*` endpoints. `super_admin` has full control; `admin` is restricted from super_admin accounts.
 - **HTTPS:** Use HTTPS in production to protect tokens and credentials in transit.
 - **SMTP:** Email delivery requires valid SMTP provider credentials. Without SMTP, OTPs are generated but not emailed.
@@ -965,17 +966,15 @@ The following items were identified while reviewing the implementation and shoul
 
 1. **SMTP not configured by default:** The forgot-password flow generates and stores OTPs even without SMTP, but no email is sent. API consumers cannot distinguish this case from a successful send because the response is intentionally generic.
 
-2. **Stateless JWT logout:** Logout does not immediately invalidate tokens server-side. Tokens remain valid until expiry.
+2. **Rate limiting is in-memory:** The rate limiter uses a JavaScript `Map` and resets on server restart. For production deployments with multiple instances, a distributed store (e.g., Redis) is recommended.
 
-3. **Rate limiting is in-memory:** The rate limiter uses a JavaScript `Map` and resets on server restart. For production deployments with multiple instances, a distributed store (e.g., Redis) is recommended.
+3. **Token expiry:** JWT expiry is not explicitly configured in the custom auth routes; it follows Payload CMS defaults.
 
-4. **Token expiry:** JWT expiry is not explicitly configured in the custom auth routes; it follows Payload CMS defaults.
+4. **Admin endpoint pagination fields:** The `GET /api/auth/admin/users` response includes `totalDocs`, `totalPages`, `page`, and `limit`, but the variable naming in the implementation may produce inconsistent values.
 
-5. **Admin endpoint pagination fields:** The `GET /api/auth/admin/users` response includes `totalDocs`, `totalPages`, `page`, and `limit`, but the variable naming in the implementation may produce inconsistent values.
+5. **Verify-OTP response:** The `resetAuthToken` is returned in the response body. In a production frontend, this token should be treated as opaque and single-use.
 
-6. **Verify-OTP response:** The `resetAuthToken` is returned in the response body. In a production frontend, this token should be treated as opaque and single-use.
-
-7. **Role defaults:** When creating a user via `POST /api/auth/admin/users`, unspecified `role` defaults to `staff` and `status` defaults to `active`.
+6. **Role defaults:** When creating a user via `POST /api/auth/admin/users`, unspecified `role` defaults to `staff` and `status` defaults to `active`.
 
 ---
 

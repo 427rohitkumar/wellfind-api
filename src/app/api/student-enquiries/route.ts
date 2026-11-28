@@ -41,6 +41,11 @@ function parseWhere(url: URL): Record<string, unknown> {
     where.enquirySource = { equals: enquirySource }
   }
 
+  const inquiryIntent = url.searchParams.get('inquiryIntent')
+  if (inquiryIntent) {
+    where.inquiryIntent = { equals: inquiryIntent }
+  }
+
   const unreadParam = url.searchParams.get('unread')
   if (unreadParam === 'true') {
     where.or = [

@@ -3,24 +3,32 @@ import { ValidationError } from 'payload'
 import { canRead, canWrite } from '@/lib/permissions'
 import {
   CONVERTIBLE_ENQUIRY_STATUSES,
+  enquiryIntents,
   enquirySources,
   enquiryStatuses,
   isValidEnquirySource,
   isValidPhoneNumber,
   normalizePhoneNumber,
+  preferredTestModes,
+  type EnquiryIntent,
   type EnquirySource,
   type EnquiryStatus,
+  type PreferredTestMode,
 } from '@/lib/studentValidation'
 
 export {
   CONVERTIBLE_ENQUIRY_STATUSES,
+  enquiryIntents,
   enquirySources,
   enquiryStatuses,
   isValidEnquirySource,
   isValidPhoneNumber,
   normalizePhoneNumber,
+  preferredTestModes,
+  type EnquiryIntent,
   type EnquirySource,
   type EnquiryStatus,
+  type PreferredTestMode,
 }
 
 export class StudentWorkflowError extends ValidationError {
@@ -265,6 +273,28 @@ export const StudentEnquiries: CollectionConfig = {
       },
     },
     {
+      name: 'inquiryIntent',
+      label: 'Inquiry intent',
+      type: 'select',
+      options: [...enquiryIntents],
+      defaultValue: 'tutor_only',
+      required: false,
+      index: true,
+      admin: {
+        description: 'Whether the visitor requested a direct tutor or came from the Assessment Test flow (test_and_tutor).',
+      },
+    },
+    {
+      name: 'preferredTestMode',
+      label: 'Preferred test mode',
+      type: 'select',
+      options: [...preferredTestModes],
+      required: false,
+      admin: {
+        description: 'Optional test mode chosen on the website (digital = Online ₹49, physical = Offline ₹99).',
+      },
+    },
+    {
       name: 'additionalNotes',
       label: 'Additional notes',
       type: 'textarea',
@@ -388,6 +418,27 @@ export const StudentEnquiries: CollectionConfig = {
       label: 'Test notes / result',
       type: 'textarea',
       maxLength: 2000,
+      access: {
+        create: ({ req: { user } }) => canManageStudentEnquiries(user),
+        update: ({ req: { user } }) => canManageStudentEnquiries(user),
+      },
+    },
+    {
+      name: 'testSkipped',
+      label: 'Test skipped',
+      type: 'checkbox',
+      defaultValue: false,
+      index: true,
+      access: {
+        create: ({ req: { user } }) => canManageStudentEnquiries(user),
+        update: ({ req: { user } }) => canManageStudentEnquiries(user),
+      },
+      admin: { description: 'True when admin/parent chose to skip the optional assessment test.' },
+    },
+    {
+      name: 'testSkippedAt',
+      label: 'Test skipped at',
+      type: 'date',
       access: {
         create: ({ req: { user } }) => canManageStudentEnquiries(user),
         update: ({ req: { user } }) => canManageStudentEnquiries(user),

@@ -620,7 +620,7 @@ curl -X POST http://localhost:3000/api/auth/admin/users/2/reset-password \
 
 ### How Authentication Works
 
-The API uses Payload CMS built-in JWT authentication. The `PAYLOAD_SECRET` environment variable signs and verifies tokens. Tokens are **stateless JWTs** — the server does not maintain a session store or token blacklist by default.
+The API uses Payload CMS built-in JWT authentication. The `PAYLOAD_SECRET` environment variable signs and verifies tokens. Every token is tied to a server-side session that is created at login (details: [auth.md](auth.md)).
 
 ### Logging In and Obtaining a JWT
 
@@ -638,11 +638,11 @@ Authorization: Bearer <your-jwt-token>
 
 ### Token Expiry
 
-Token expiry is controlled by Payload CMS's auth configuration and follows Payload's defaults unless overridden in `payload.config.ts`.
+Tokens and their sessions expire after 2 hours (Payload default).
 
 ### Logout Behavior
 
-Payload uses stateless JWTs. Logging out instructs the client to discard the token. Server-side revocation is not implemented unless Payload session tracking is separately enabled. Clients should delete the token from storage after logout.
+`POST /api/auth/logout` ends the session of the presented token, which is rejected from then on. Other sessions of the same user stay signed in. Clients should still delete the token from storage after logout.
 
 ---
 
@@ -679,7 +679,7 @@ Payload uses stateless JWTs. Logging out instructs the client to discard the tok
 - **Last active super_admin protection:** The last active `super_admin` cannot be deleted, deactivated, blocked, suspended, or demoted via any endpoint.
 - **Blocked/suspended authentication:** Blocked and suspended users cannot authenticate. Status is checked during login.
 - **Rate limiting:** Applied per IP for login, forgot-password, verify-OTP, and reset-password endpoints. Uses in-memory storage (use Redis for production multi-instance deployments).
-- **JWT:** Stateless; logout does not immediately invalidate tokens server-side.
+- **JWT:** Bound to a server-side session; logout invalidates that token immediately.
 - **HTTPS:** Use HTTPS in production to protect tokens and credentials in transit.
 - **No public signup:** Account creation is `super_admin`-only.
 

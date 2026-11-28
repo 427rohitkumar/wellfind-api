@@ -592,6 +592,8 @@ Authorization: Bearer <jwt-token>
 | `additionalNotes` | textarea | No | Max 2,000 characters |
 | `agreedToPolicy` | checkbox | Public: Yes / Admin: Optional | Public submissions require `true`. Admin manual creation defaults to `true` and rejects explicit `false`. |
 | `enquirySource` | select | No (defaults to `website`) | Allowed: `website`, `phone_call`, `email`, `referral`, `network`, `other`. Public route enforces `website`. |
+| `inquiryIntent` | select | No (defaults to `tutor_only`) | Allowed: `tutor_only` (direct tutor enquiry), `test_and_tutor` (enquiry from Assessment Test flow). Also filterable via `?inquiryIntent=`. |
+| `preferredTestMode` | select | No | Allowed: `digital` (Online ₹49), `physical` (Offline ₹99). Optional test mode chosen on the website. |
 
 Field names match the `TutorEnquiryFormData` TypeScript interface so the public
 API stays compatible with the form contract.

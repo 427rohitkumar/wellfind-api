@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 import type { AuthUserRecord } from '@/lib/api'
+import { testPeriods } from '@/collections/AllocationWork'
 import { extractRelationId, extractSubjectNames } from '@/lib/studentValidation'
 import { ServiceError } from '@/services/studentService'
 import { findTeacherProfileForUser } from '@/services/teacherAllocationService'
@@ -62,6 +63,7 @@ export async function getStudentDetail(payload: Payload, user: AuthUserRecord, i
             ? {
                 iqScore: r.iqScore, creativityScore: r.creativityScore, academicScore: r.academicScore,
                 iqLevel: level(r.iqScore), creativityLevel: level(r.creativityScore), academicLevel: level(r.academicScore),
+                extraScores: (Array.isArray(r.extraScores) ? r.extraScores : []).map((x: any) => ({ label: x.label, score: x.score, level: level(x.score) })),
                 strengths: r.strengths ?? null, improvementAreas: r.improvementAreas ?? null,
                 recommendation: r.recommendation ?? null, hoursPerWeek: r.hoursPerWeek ?? null,
               }
@@ -222,7 +224,7 @@ export async function deleteSession(payload: Payload, user: AuthUserRecord, id: 
 }
 
 const serializeWork = (d: Record<string, any>) => ({
-  id: d.id, kind: d.kind, title: d.title, description: d.description ?? null, dueDate: d.dueDate ?? null, status: d.status,
+  id: d.id, kind: d.kind, period: d.kind === 'test' ? d.period ?? 'other' : null, title: d.title, description: d.description ?? null, dueDate: d.dueDate ?? null, status: d.status,
   marks: d.marks ?? null, maxMarks: d.maxMarks ?? null, feedback: d.feedback ?? null, submittedAt: d.submittedAt ?? null, gradedAt: d.gradedAt ?? null, createdAt: d.createdAt,
 })
 
@@ -235,6 +237,10 @@ export async function listWork(payload: Payload, user: AuthUserRecord, id: numbe
 function parseWork(body: Record<string, unknown>, existing?: Record<string, any>) {
   const data: Record<string, unknown> = {}
   if (body.kind !== undefined) { if (!['assignment', 'test'].includes(String(body.kind))) throw bad('kind', "kind must be 'assignment' or 'test'."); data.kind = body.kind }
+  if (body.period !== undefined && body.period !== null) {
+    if (!(testPeriods as readonly string[]).includes(String(body.period))) throw bad('period', "period must be 'weekly', 'monthly' or 'other'.")
+    data.period = body.period
+  }
   if (body.title !== undefined || !existing) {
     if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) throw bad('title', 'Add a title (up to 200 characters).')
     data.title = body.title.trim()
